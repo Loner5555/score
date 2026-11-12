@@ -159,7 +159,15 @@
         <option value="12" selected>Khối 12</option>
       </select>
     </div>
-    <p class="sbd-hint">Khối: giữ Ctrl / Cmd để chọn nhiều khối cùng lúc.</p>
+    <div class="sbd-hint" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:10px; border-top:1px dashed var(--border); padding-top:10px;">
+      <div>
+        <span>Firebase DB: </span>
+        <code id="dbBadge" style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:.75rem; color:#0f172a;">ai-studio-hthngtracuimthig-...</code>
+      </div>
+      <button onclick="syncConfigFromWeb(true)" style="border:none; background:#eff6ff; color:var(--primary); font-size:.78rem; font-weight:600; padding:4px 10px; border-radius:6px; cursor:pointer;">
+        🔄 Tự động dò Database ID mới
+      </button>
+    </div>
   </div>
 
   <!-- SBD card -->
@@ -271,12 +279,54 @@
    Firestore REST API – không dùng Firebase SDK
    Tránh domain restriction của API key
    ════════════════════════════════════════════════════ */
-const FB = {
+let FB = {
   projectId:  "data-song-flxdt",
   databaseId: "ai-studio-hthngtracuimthig-0400ea51-2a75-479c-8b07-00f33ebb303e",
   apiKey:     "AIzaSyA1maAy32d8_18HnNpoA9UXUXdGVpVVARE",
 };
-const FS_BASE = `https://firestore.googleapis.com/v1/projects/${FB.projectId}/databases/${FB.databaseId}/documents`;
+let FS_BASE = `https://firestore.googleapis.com/v1/projects/${FB.projectId}/databases/${FB.databaseId}/documents`;
+
+function updateFSBase() {
+  FS_BASE = `https://firestore.googleapis.com/v1/projects/${FB.projectId}/databases/${FB.databaseId}/documents`;
+  const badge = document.getElementById("dbBadge");
+  if (badge) badge.textContent = FB.databaseId.slice(0, 28) + "...";
+}
+
+/* Tự động dò và cập nhật Database ID mới nhất trực tiếp từ web trường */
+async function syncConfigFromWeb(showAlert = false) {
+  try {
+    const res = await fetch("https://findlqd.vercel.app/");
+    if (!res.ok) throw new Error("Không thể tải trang findlqd.vercel.app");
+    const html = await res.text();
+    const jsMatches = html.match(/\/assets\/index-[a-zA-Z0-9_-]+\.js/);
+    if (!jsMatches) throw new Error("Không tìm thấy tệp JS bundle");
+    const jsRes = await fetch("https://findlqd.vercel.app" + jsMatches[0]);
+    if (!jsRes.ok) throw new Error("Không thể tải file JS bundle");
+    const js = await jsRes.text();
+
+    const dbM = js.match(/firestoreDatabaseId:\s*[`"']([^`"']+)/);
+    const keyM = js.match(/apiKey:\s*[`"']([^`"']+)/);
+    const projM = js.match(/projectId:\s*[`"']([^`"']+)/);
+
+    let changed = false;
+    if (dbM && dbM[1] && dbM[1] !== FB.databaseId) {
+      FB.databaseId = dbM[1]; changed = true;
+    }
+    if (keyM && keyM[1] && keyM[1] !== FB.apiKey) {
+      FB.apiKey = keyM[1]; changed = true;
+    }
+    if (projM && projM[1] && projM[1] !== FB.projectId) {
+      FB.projectId = projM[1]; changed = true;
+    }
+
+    updateFSBase();
+    if (showAlert) {
+      alert(`✅ Đã đồng bộ Database ID mới nhất từ web trường:\n${FB.databaseId}`);
+    }
+  } catch(e) {
+    if (showAlert) alert("Chưa thể quét tự động (dùng cấu hình lưu sẵn): " + e.message);
+  }
+}
 
 /* Gọi Firestore REST – lấy 1 document */
 async function fsGetDoc(collection, docId) {
@@ -1058,6 +1108,8 @@ document.getElementById("txtSBD").addEventListener("input", updateCount);
 window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("txtSBD").value = DEFAULT_SBDS;
   updateCount();
+  updateFSBase();
+  syncConfigFromWeb(false);
   const periodSel = document.getElementById("selPeriod");
   checkCache(periodSel.value);
   periodSel.addEventListener("change", () => checkCache(periodSel.value));

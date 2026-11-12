@@ -16,7 +16,7 @@ import urllib.request
 import urllib.error
 from pathlib import Path
 
-# Cấu hình Firebase của THPT Lê Quý Đôn
+# Cấu hình Firebase mặc định (sẽ tự động cập nhật nếu web trường đổi)
 PROJECT_ID = "data-song-flxdt"
 DATABASE_ID = "ai-studio-hthngtracuimthig-0400ea51-2a75-479c-8b07-00f33ebb303e"
 API_KEY = "AIzaSyA1maAy32d8_18HnNpoA9UXUXdGVpVVARE"
@@ -24,6 +24,42 @@ BASE_URL = f"https://firestore.googleapis.com/v1/projects/{PROJECT_ID}/databases
 
 # Import hàm xuất Excel từ export_lqd_scores.py
 from export_lqd_scores import write_xlsx, decode_firestore_value, read_sbd_list, find_sbd_index
+
+
+def sync_latest_config_from_web():
+    """Tự động kết nối tới findlqd.vercel.app để trích xuất database ID và API key mới nhất."""
+    global PROJECT_ID, DATABASE_ID, API_KEY, BASE_URL
+    try:
+        req = urllib.request.Request("https://findlqd.vercel.app/", headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=8) as resp:
+            html = resp.read().decode("utf-8")
+        
+        js_matches = re.findall(r'/assets/index-[a-zA-Z0-9_-]+\.js', html)
+        if not js_matches:
+            return
+        
+        js_url = "https://findlqd.vercel.app" + js_matches[0]
+        req_js = urllib.request.Request(js_url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req_js, timeout=10) as resp_js:
+            js_code = resp_js.read().decode("utf-8")
+            
+        db_m = re.findall(r'firestoreDatabaseId:[\x60\x22\x27]([^\x60\x22\x27]+)', js_code)
+        key_m = re.findall(r'apiKey:[\x60\x22\x27]([^\x60\x22\x27]+)', js_code)
+        proj_m = re.findall(r'projectId:[\x60\x22\x27]([^\x60\x22\x27]+)', js_code)
+
+        if db_m:
+            DATABASE_ID = db_m[0]
+        if key_m:
+            API_KEY = key_m[0]
+        if proj_m:
+            PROJECT_ID = proj_m[0]
+            
+        BASE_URL = f"https://firestore.googleapis.com/v1/projects/{PROJECT_ID}/databases/{DATABASE_ID}/documents"
+        print(f"[*] Đã tự động đồng bộ cấu hình mới nhất từ web trường:")
+        print(f"    - Database ID : {DATABASE_ID}")
+        print(f"    - Project ID  : {PROJECT_ID}")
+    except Exception as e:
+        print(f"[!] Không thể quét cấu hình mới từ web (dùng config dự phòng): {e}")
 
 
 def fetch_doc(collection: str, doc_id: str):
@@ -45,6 +81,7 @@ def fetch_doc(collection: str, doc_id: str):
 
 
 def main():
+    sync_latest_config_from_web()
     period_id = sys.argv[1] if len(sys.argv) > 1 else "GiuaHKI_2026_2027"
     sbd_file = Path("sbd.txt")
     if not sbd_file.exists():
