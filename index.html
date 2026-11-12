@@ -202,22 +202,70 @@
 
 <!-- SheetJS -->
 <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-<!-- Firebase SDK (compat) -->
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-const FB_CONFIG = {
-  apiKey: "AIzaSyA1maAy32d8_18HnNpoA9UXUXdGVpVVARE",
-  authDomain: "data-song-flxdt.firebaseapp.com",
+<script>
+/* ════════════════════════════════════════════════════
+   Firestore REST API – không dùng Firebase SDK
+   Tránh domain restriction của API key
+   ════════════════════════════════════════════════════ */
+const FB = {
   projectId: "data-song-flxdt",
-  storageBucket: "data-song-flxdt.firebasestorage.app",
-  messagingSenderId: "874423564319",
-  appId: "1:874423564319:web:99015f14dabb8b9472fd2a"
+  apiKey:    "AIzaSyA1maAy32d8_18HnNpoA9UXUXdGVpVVARE",
 };
+const FS_BASE = `https://firestore.googleapis.com/v1/projects/${FB.projectId}/databases/(default)/documents`;
 
-const app = initializeApp(FB_CONFIG);
-const db  = getFirestore(app);
+/* Gọi Firestore REST – lấy 1 document */
+async function fsGetDoc(collection, docId) {
+  const url = `${FS_BASE}/${collection}/${encodeURIComponent(docId)}?key=${FB.apiKey}`;
+  const res = await fetch(url, {
+    headers: {
+      "Content-Type": "application/json",
+      /* Giả lập referrer của trang gốc để vượt HTTP referrer restriction */
+      "X-Referer": "https://findlqd.vercel.app/",
+    },
+  });
+  if (res.status === 404) return null;          // doc không tồn tại
+  if (res.status === 429 || res.status === 503) {
+    const e = new Error("resource-exhausted");
+    e.code = "resource-exhausted";
+    throw e;
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const msg  = body?.error?.message || res.statusText;
+    if (msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED")) {
+      const e = new Error("resource-exhausted"); e.code = "resource-exhausted"; throw e;
+    }
+    throw new Error(`HTTP ${res.status}: ${msg}`);
+  }
+  return res.json();
+}
+
+/* Decode Firestore typed value → JS value */
+function decodeValue(v) {
+  if (!v || typeof v !== "object") return v;
+  if ("stringValue"    in v) return v.stringValue;
+  if ("integerValue"   in v) return Number(v.integerValue);
+  if ("doubleValue"    in v) return v.doubleValue;
+  if ("booleanValue"   in v) return v.booleanValue;
+  if ("nullValue"      in v) return null;
+  if ("timestampValue" in v) return v.timestampValue;
+  if ("arrayValue"     in v) return (v.arrayValue.values || []).map(decodeValue);
+  if ("mapValue"       in v) {
+    const o = {};
+    for (const [k, val] of Object.entries(v.mapValue.fields || {})) o[k] = decodeValue(val);
+    return o;
+  }
+  return v;
+}
+
+/* Chuyển Firestore REST document → plain object */
+function decodeDoc(fsDoc) {
+  if (!fsDoc || !fsDoc.fields) return null;
+  const out = {};
+  for (const [k, v] of Object.entries(fsDoc.fields)) out[k] = decodeValue(v);
+  return out;
+}
+
 
 /* ── SBD default list ── */
 const DEFAULT_SBDS = `12026001
@@ -744,14 +792,13 @@ function findSBDInRows(rows, headerRow, targetSBD) {
 
 /* ── Fetch one grade doc (bulk – contains all students) ── */
 async function fetchGradeDoc(periodId, grade) {
-  const shardRef = doc(db, "exam_grades", `${periodId}_grade_${grade}`);
-  let snap = await getDoc(shardRef);
-  // Legacy fallback for GiuaHKI
-  if (!snap.exists() && periodId === "GiuaHKI_2026_2027") {
-    snap = await getDoc(doc(db, "exam_grades", `grade_${grade}`));
+  let raw = await fsGetDoc("exam_grades", `${periodId}_grade_${grade}`);
+  // Legacy fallback
+  if (!raw && periodId === "GiuaHKI_2026_2027") {
+    raw = await fsGetDoc("exam_grades", `grade_${grade}`);
   }
-  if (!snap.exists()) return null;
-  const d = snap.data();
+  if (!raw) return null;
+  const d = decodeDoc(raw);
   let studentRows = [];
   if (typeof d.studentRowsJson === "string") {
     try { studentRows = JSON.parse(d.studentRowsJson); } catch {}
@@ -768,19 +815,18 @@ async function fetchGradeDoc(periodId, grade) {
   };
 }
 
-/* ── Fetch individual student score from student_scores collection ── */
+/* ── Fetch individual student score ── */
 async function fetchStudentScore(periodId, sbd) {
-  const ref = doc(db, "student_scores", `${periodId}_${sbd}`);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return null;
-  const d = snap.data();
+  const raw = await fsGetDoc("student_scores", `${periodId}_${sbd}`);
+  if (!raw) return null;
+  const d = decodeDoc(raw);
   return {
-    grade: d.grade || "?",
+    grade:      d.grade || "?",
     periodId,
-    fileName: d.fileName || `Khối_${d.grade}.xlsx`,
-    headerRow: Array.isArray(d.headerRow) ? d.headerRow : [],
+    fileName:   d.fileName || `Khối_${d.grade}.xlsx`,
+    headerRow:  Array.isArray(d.headerRow) ? d.headerRow : [],
     studentRow: Array.isArray(d.studentRow) ? d.studentRow : [],
-    sbd: d.sbd || sbd,
+    sbd:        d.sbd || sbd,
   };
 }
 
