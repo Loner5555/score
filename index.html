@@ -189,6 +189,15 @@
     </button>
   </div>
 
+  <!-- Quota warning banner -->
+  <div id="quotaBanner" style="display:none" class="alert alert-warn">
+    <div>
+      <strong>⚠️ Firestore hết quota hôm nay</strong><br/>
+      Hệ thống Firebase của trường dùng free tier — giới hạn số lượt đọc mỗi ngày. Quota reset lúc <strong>07:00 sáng giờ VN (00:00 UTC)</strong>.<br/>
+      ⏱️ Reset sau: <strong id="quotaCountdown">...</strong>
+    </div>
+  </div>
+
   <!-- Missing -->
   <div class="card" id="missingSection" style="display:none">
     <h2>⚠️ SBD chưa có dữ liệu</h2>
@@ -815,9 +824,16 @@ async function fetchGradeDoc(periodId, grade) {
   };
 }
 
+/* Chuẩn hoá SBD theo đúng hàm FR(e) của website findlqd.vercel.app */
+function formatSBD(s) {
+  if (s == null) return "";
+  return s.toString().trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "_");
+}
+
 /* ── Fetch individual student score ── */
 async function fetchStudentScore(periodId, sbd) {
-  const raw = await fsGetDoc("student_scores", `${periodId}_${sbd}`);
+  const cleanSbd = formatSBD(sbd);
+  const raw = await fsGetDoc("student_scores", `${periodId}_${cleanSbd}`);
   if (!raw) return null;
   const d = decodeDoc(raw);
   return {
@@ -891,6 +907,22 @@ function buildXLSX(records, sbdList, matched) {
   return XLSX.write(wb, { bookType: "xlsx", type: "array" });
 }
 
+/* ── Timer đếm ngược đến lúc reset quota (07:00 sáng VN = 00:00 UTC) ── */
+function updateQuotaCountdown() {
+  const el = document.getElementById("quotaCountdown");
+  if (!el) return;
+  const now = new Date();
+  const resetTime = new Date();
+  resetTime.setUTCHours(24, 0, 0, 0); // 00:00 UTC ngày tiếp theo
+  const diff = Math.max(0, resetTime - now);
+  const hours = Math.floor(diff / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+  const secs = Math.floor((diff % 60000) / 1000);
+  el.textContent = `${hours} giờ ${mins} phút ${secs} giây (07:00 sáng mai)`;
+}
+setInterval(updateQuotaCountdown, 1000);
+updateQuotaCountdown();
+
 /* ── Main fetch ── */
 window.startFetch = async function() {
   const rawSBD   = document.getElementById("txtSBD").value;
@@ -904,7 +936,9 @@ window.startFetch = async function() {
   }
   if (grades.length === 0) {
     alert("Vui lòng chọn ít nhất một khối."); return;
-  }  // Reset UI
+  }
+
+  // Reset UI
   _xlsxBlob = null;
   const btn = document.getElementById("btnFetch");
   btn.disabled = true;
@@ -913,139 +947,189 @@ window.startFetch = async function() {
   document.getElementById("progressWrap").style.display = "flex";
   document.getElementById("resultCard").style.display = "none";
   document.getElementById("missingSection").style.display = "none";
+  document.getElementById("quotaBanner").style.display = "none";
   document.getElementById("logBox").innerHTML = "";
   document.getElementById("logBox").style.display = "none";
   setProgress(0, "Bắt đầu...");
 
-  const wanted  = new Set(sbdList);
   const records = [];
   const matched = new Set();
   let quotaHit  = false;
 
-  // ── Shared grade-doc cache (grade → data) ──
-  const gradeCache = {};
-
   try {
-    log(`📋 ${sbdList.length} SBD · Kỳ: ${periodId} · Khối: ${grades.join(", ")}`, "log-info");
+    log(`📋 Danh sách: ${sbdList.length} SBD · Kỳ: ${periodId} · Khối: ${grades.join(", ")}`, "log-info");
 
-    // ══════════════════════════════════════════
-    // PHASE 1: Tải bulk doc theo khối (1 req/khối)
-    // ══════════════════════════════════════════
-    log("", "");
-    log("── PHASE 1: Tải dữ liệu bulk theo khối ──", "log-info");
+    // ══════════════════════════════════════════════════════════════════════
+    // CHIẾN LƯỢC 1: NẾU SỐ LƯỢNG ÍT (<= 15 SBD HOẶC 1 SBD)
+    // -> GỌI TRỰC TIẾP student_scores (CỰC NHANH, 0.3 GIÂY, GIỐNG WEB GỐC)
+    // ══════════════════════════════════════════════════════════════════════
+    if (sbdList.length <= 15) {
+      log("⚡ Chế độ siêu tốc: Tra cứu trực tiếp theo từng SBD...", "log-info");
+      setProgress(30, "Đang truy vấn điểm số...");
 
-    for (let gi = 0; gi < grades.length; gi++) {
-      const grade = grades[gi];
-      setProgress(Math.round((gi / grades.length) * 40), `Phase 1 – Tải Khối ${grade}...`);
-      log(`⬇️  Tải bulk Khối ${grade}...`);
+      const promises = sbdList.map(async sbd => {
+        try {
+          const res = await fetchStudentScore(periodId, sbd);
+          if (res && res.studentRow && res.studentRow.length > 0) {
+            records.push({
+              sbd,
+              grade: res.grade,
+              periodId,
+              headerRow: res.headerRow,
+              row: res.studentRow,
+            });
+            matched.add(sbd);
+            log(`  ✅ SBD ${sbd}: Đã tìm thấy điểm (Khối ${res.grade})`, "log-ok");
+          } else {
+            log(`  ℹ️ SBD ${sbd}: Không tìm thấy hồ sơ cá nhân`, "log-warn");
+          }
+        } catch (err) {
+          if (err?.code === "resource-exhausted" || err?.message?.includes("quota") || err?.message?.includes("RESOURCE_EXHAUSTED")) {
+            quotaHit = true;
+            throw err;
+          }
+          log(`  ❌ SBD ${sbd}: ${err.message}`, "log-err");
+        }
+      });
 
       try {
-        const gradeData = await fetchGradeDoc(periodId, grade);
-        if (!gradeData) {
-          log(`ℹ️  Khối ${grade}: Không có doc bulk.`, "log-warn");
-          gradeCache[grade] = null;
-        } else {
-          gradeCache[grade] = gradeData;
-          log(`✅ Khối ${grade}: ${gradeData.studentRows.length} học sinh.`, "log-ok");
-
-          // Filter SBDs from this grade doc
-          let foundInGrade = 0;
-          for (const sbd of sbdList) {
-            if (matched.has(sbd)) continue; // already found
-            const row = findSBDInRows(gradeData.studentRows, gradeData.headerRow, sbd);
-            if (row) {
-              records.push({ sbd, grade, periodId, headerRow: gradeData.headerRow, row });
-              matched.add(sbd);
-              foundInGrade++;
-            }
-          }
-          log(`   → ${foundInGrade} SBD tìm thấy trong Khối ${grade}.`);
+        await Promise.all(promises);
+      } catch (err) {
+        if (quotaHit) {
+          log("🛑 FIREBASE BÁO HẾT QUOTA (RESOURCE_EXHAUSTED). Dừng ngay lập tức!", "log-err");
+          document.getElementById("quotaBanner").style.display = "block";
         }
-      } catch (e) {
-        if (e?.code === "resource-exhausted") {
-          quotaHit = true;
-          log(`⚠️  Khối ${grade}: Firestore hết quota.`, "log-warn");
-        } else {
+      }
+    } 
+    // ══════════════════════════════════════════════════════════════════════
+    // CHIẾN LƯỢC 2: NẾU SỐ LƯỢNG LỚN (> 15 SBD, VÍ DỤ 451 SBD)
+    // -> PHASE 1: Tải file tổng theo khối (1 req lấy hàng trăm em)
+    // -> PHASE 2: Nếu thiếu em nào mới bù bằng student_scores
+    // ══════════════════════════════════════════════════════════════════════
+    else {
+      log("📦 Chế độ hàng loạt: Tải dữ liệu tổng hợp theo khối...", "log-info");
+
+      // Ưu tiên khối 12 nếu đa số SBD bắt đầu bằng '12'
+      const sortedGrades = [...grades].sort((a, b) => (b === "12" ? 1 : -1));
+
+      for (let gi = 0; gi < sortedGrades.length; gi++) {
+        if (quotaHit) break; // Ngắt mạch nếu hết quota
+
+        const grade = sortedGrades[gi];
+        const pct = Math.round((gi / sortedGrades.length) * 50);
+        setProgress(pct, `Đang tải bảng điểm Khối ${grade}...`);
+        log(`⬇️ Đang đọc file Khối ${grade}...`);
+
+        try {
+          const gradeData = await fetchGradeDoc(periodId, grade);
+          if (gradeData && gradeData.studentRows.length > 0) {
+            log(`✅ Khối ${grade}: Đã tải ${gradeData.studentRows.length} học sinh. Bắt đầu lọc SBD...`, "log-ok");
+
+            let foundCount = 0;
+            for (const sbd of sbdList) {
+              if (matched.has(sbd)) continue;
+              const row = findSBDInRows(gradeData.studentRows, gradeData.headerRow, sbd);
+              if (row) {
+                records.push({ sbd, grade, periodId, headerRow: gradeData.headerRow, row });
+                matched.add(sbd);
+                foundCount++;
+              }
+            }
+            log(`   → Khớp được ${foundCount} SBD từ Khối ${grade}.`);
+          } else {
+            log(`ℹ️ Khối ${grade}: Không có file tổng trên hệ thống.`, "log-warn");
+          }
+        } catch (e) {
+          if (e?.code === "resource-exhausted" || e?.message?.includes("quota") || e?.message?.includes("RESOURCE_EXHAUSTED")) {
+            quotaHit = true;
+            log(`🛑 Khối ${grade}: Firestore hết quota trong ngày!`, "log-err");
+            document.getElementById("quotaBanner").style.display = "block";
+            break; // Circuit breaker: dừng ngay
+          }
           log(`❌ Khối ${grade}: ${e?.message || e}`, "log-err");
         }
       }
-      await sleep(300);
-    }
 
-    // ══════════════════════════════════════════
-    // PHASE 2: Fetch từng SBD còn thiếu qua student_scores
-    // ══════════════════════════════════════════
-    const stillMissing = sbdList.filter(s => !matched.has(s));
+      // PHASE 2: Nếu còn SBD chưa có và quota CHƯA bị chạm
+      const stillMissing = sbdList.filter(s => !matched.has(s));
+      if (stillMissing.length > 0 && !quotaHit) {
+        log("", "");
+        log(`── Tra cứu riêng ${stillMissing.length} SBD chưa có trong file khối ──`, "log-info");
 
-    if (stillMissing.length > 0) {
-      log("", "");
-      log(`── PHASE 2: Fetch riêng lẻ ${stillMissing.length} SBD còn thiếu ──`, "log-info");
+        const BATCH = 12; // Tăng lên 12 request song song cho nhanh
+        let done = 0;
 
-      const BATCH = 8; // 8 requests song song
-      let done = 0;
+        for (let i = 0; i < stillMissing.length; i += BATCH) {
+          if (quotaHit) break;
 
-      for (let i = 0; i < stillMissing.length; i += BATCH) {
-        const chunk = stillMissing.slice(i, i + BATCH);
-        const pct = 40 + Math.round((done / stillMissing.length) * 45);
-        setProgress(pct, `Phase 2 – ${done}/${stillMissing.length} SBD...`);
+          const chunk = stillMissing.slice(i, i + BATCH);
+          const pct = 50 + Math.round((done / stillMissing.length) * 35);
+          setProgress(pct, `Đang xử lý ${done}/${stillMissing.length} SBD...`);
 
-        const results = await Promise.allSettled(
-          chunk.map(sbd => fetchStudentScore(periodId, sbd))
-        );
+          const results = await Promise.allSettled(chunk.map(sbd => fetchStudentScore(periodId, sbd)));
 
-        for (let j = 0; j < chunk.length; j++) {
-          const sbd = chunk[j];
-          const res = results[j];
-          if (res.status === "fulfilled" && res.value) {
-            const d = res.value;
-            records.push({
-              sbd,
-              grade: d.grade,
-              periodId,
-              headerRow: d.headerRow,
-              row: d.studentRow,
-            });
-            matched.add(sbd);
-            log(`  ✅ ${sbd} → Khối ${d.grade} (student_scores)`, "log-ok");
-          } else if (res.status === "rejected") {
-            const code = res.reason?.code;
-            if (code === "resource-exhausted") {
-              quotaHit = true;
-              log(`  ⚠️  ${sbd}: quota hết.`, "log-warn");
-            } else {
-              log(`  ✗  ${sbd}: ${res.reason?.message || "không tìm thấy"}`, "");
+          for (let j = 0; j < chunk.length; j++) {
+            const sbd = chunk[j];
+            const res = results[j];
+            if (res.status === "fulfilled" && res.value && res.value.studentRow.length > 0) {
+              const d = res.value;
+              records.push({ sbd, grade: d.grade, periodId, headerRow: d.headerRow, row: d.studentRow });
+              matched.add(sbd);
+              log(`  ✅ SBD ${sbd} (Khối ${d.grade})`, "log-ok");
+            } else if (res.status === "rejected") {
+              const msg = res.reason?.message || "";
+              if (res.reason?.code === "resource-exhausted" || msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED")) {
+                quotaHit = true;
+                log(`🛑 Hết quota Firestore! Dừng lại ngay lập tức để bảo vệ tài khoản.`, "log-err");
+                document.getElementById("quotaBanner").style.display = "block";
+                break;
+              }
             }
           }
-          // fulfilled + null = không có doc = SBD không tồn tại trong kỳ này
+          done += chunk.length;
+          await sleep(150); // delay siêu ngắn 150ms
         }
-
-        done += chunk.length;
-        await sleep(250);
       }
-
-      const foundPhase2 = stillMissing.filter(s => matched.has(s)).length;
-      log(`   → Phase 2 tìm thêm ${foundPhase2} SBD.`, foundPhase2 > 0 ? "log-ok" : "");
     }
 
-    // ══════════════════════════════════════════
-    // PHASE 3: Tạo Excel
-    // ══════════════════════════════════════════
-    setProgress(88, "Đang tạo file Excel...");
+    // ══════════════════════════════════════════════════════════════════════
+    // PHASE 3: Xuất file Excel
+    // ══════════════════════════════════════════════════════════════════════
+    setProgress(90, "Đang đóng gói file Excel...");
     log("", "");
-    log("── PHASE 3: Tạo file Excel ──", "log-info");
-
-    if (records.length === 0) {
-      log("⚠️  Không có dữ liệu nào để xuất.", "log-warn");
-    }
+    log("── Đóng gói dữ liệu ra file Excel ──", "log-info");
 
     const xlsxArr = buildXLSX(records, sbdList, matched);
     _xlsxBlob = new Blob([xlsxArr], {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     });
 
-    setProgress(100, "Hoàn thành!");
-    log(`🎉 Hoàn thành! ${matched.size}/${sbdList.length} SBD tìm thấy – ${records.length} dòng.`, "log-ok");
-    if (quotaHit) log("⚠️  Một số request bị quota – kết quả có thể chưa đầy đủ. Thử lại sau.", "log-warn");
+    setProgress(100, "Hoàn tất!");
+    log(`🎉 Hoàn tất! Tìm thấy ${matched.size}/${sbdList.length} SBD.`, "log-ok");
+
+    // Hiển thị kết quả
+    const missing = sbdList.filter(s => !matched.has(s));
+    document.getElementById("statTotal").textContent   = sbdList.length;
+    document.getElementById("statFound").textContent   = matched.size;
+    document.getElementById("statMissing").textContent = missing.length;
+    document.getElementById("statRows").textContent    = records.length;
+    document.getElementById("resultCard").style.display = "block";
+
+    if (missing.length > 0) {
+      const ml = document.getElementById("missingList");
+      ml.innerHTML = missing.map(s => `<span class="missing-tag">${s}</span>`).join("");
+      document.getElementById("missingSection").style.display = "block";
+    }
+
+  } catch(e) {
+    log(`❌ Lỗi: ${e?.message || e}`, "log-err");
+    setProgress(0, "Lỗi kết nối.");
+  } finally {
+    btn.disabled = false;
+    document.getElementById("spinner").style.display = "none";
+    document.getElementById("btnText").textContent = "🚀 Lấy điểm & Xuất Excel";
+  }
+};
 
     // Update stats
     const missing = sbdList.filter(s => !matched.has(s));
