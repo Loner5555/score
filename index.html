@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LQD Score Exporter – THPT Lê Quý Đôn</title>
+  <meta name="description" content="Xuất bảng điểm theo SBD – THPT Lê Quý Đôn, tải về Excel một chạm." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #1d4ed8;
+      --primary-dark: #1e40af;
+      --success: #16a34a;
+      --warning: #d97706;
+      --danger: #dc2626;
+      --bg: #eef3fb;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --muted: #64748b;
+      --radius: 12px;
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    header {
+      background: white;
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex; align-items: center; gap: 12px;
+      position: sticky; top: 0; z-index: 20;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .logo { width: 36px; height: 36px; background: var(--primary); border-radius: 8px; display:flex; align-items:center; justify-content:center; }
+    .logo svg { width:20px; height:20px; fill:white; }
+    header h1 { font-size: 1rem; font-weight: 700; color: var(--primary); }
+    header span { font-size: .78rem; color: var(--muted); }
+
+    main { max-width: 820px; margin: 0 auto; padding: 32px 16px 60px; display: flex; flex-direction: column; gap: 20px; }
+
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.04); }
+    .card h2 { font-size: .9rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 16px; }
+
+    /* Period + grade selector */
+    .row-flex { display: flex; gap: 12px; flex-wrap: wrap; }
+    select, button {
+      border: 1px solid var(--border); border-radius: 8px;
+      font-family: inherit; font-size: .9rem; color: var(--text);
+      background: white; cursor: pointer; transition: .15s;
+    }
+    select { padding: 10px 14px; flex: 1; min-width: 160px; }
+    select:focus { outline: 2px solid var(--primary); border-color: transparent; }
+
+    /* SBD paste area */
+    textarea {
+      width: 100%; border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px; font-family: 'Courier New', monospace; font-size: .85rem;
+      resize: vertical; min-height: 120px; color: var(--text);
+      transition: .15s;
+    }
+    textarea:focus { outline: 2px solid var(--primary); border-color: transparent; }
+    .sbd-hint { font-size: .78rem; color: var(--muted); margin-top: 8px; }
+
+    /* Big action button */
+    #btnFetch {
+      background: var(--primary); color: white; border: none;
+      padding: 14px 28px; border-radius: 10px; font-size: 1rem; font-weight: 600;
+      width: 100%; cursor: pointer; transition: .2s; display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    #btnFetch:hover:not(:disabled) { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(29,78,216,.25); }
+    #btnFetch:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+
+    /* Progress */
+    #progressWrap { display: none; flex-direction: column; gap: 8px; }
+    .progress-bar-track { background: #e2e8f0; border-radius: 999px; height: 8px; overflow: hidden; }
+    .progress-bar-fill { background: var(--primary); height: 100%; width: 0%; border-radius: 999px; transition: width .3s; }
+    #progressText { font-size: .82rem; color: var(--muted); }
+
+    /* Log */
+    #logBox {
+      display: none; background: #0f172a; color: #94a3b8;
+      border-radius: 8px; padding: 14px; font-size: .78rem;
+      font-family: 'Courier New', monospace; max-height: 240px; overflow-y: auto;
+      line-height: 1.6;
+    }
+    .log-ok { color: #4ade80; }
+    .log-warn { color: #fbbf24; }
+    .log-err { color: #f87171; }
+    .log-info { color: #60a5fa; }
+
+    /* Result summary */
+    #resultCard { display: none; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .stat { background: var(--bg); border-radius: 8px; padding: 14px; text-align: center; }
+    .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+    .stat-label { font-size: .75rem; color: var(--muted); margin-top: 4px; }
+
+    #btnDownload {
+      background: var(--success); color: white; border: none;
+      padding: 13px 24px; border-radius: 10px; font-size: .95rem; font-weight: 600;
+      width: 100%; cursor: pointer; transition: .2s; display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    #btnDownload:hover { background: #15803d; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(22,163,74,.25); }
+
+    /* Missing SBD list */
+    #missingSection { display: none; }
+    .missing-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .missing-tag { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; padding: 3px 10px; border-radius: 999px; font-size: .8rem; }
+
+    .alert { border-radius: 8px; padding: 12px 16px; font-size: .85rem; display: flex; gap: 10px; align-items: flex-start; }
+    .alert-warn { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+    .alert-err  { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
+    .alert-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+
+    footer { text-align: center; padding: 24px; font-size: .78rem; color: var(--muted); }
+    .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.4); border-top-color: white; border-radius: 50%; animation: spin .7s linear infinite; display: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg>
+  </div>
+  <div>
+    <h1>LQD Score Exporter</h1>
+    <span>THPT Lê Quý Đôn – Xuất bảng điểm theo SBD</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- Config card -->
+  <div class="card">
+    <h2>⚙️ Cấu hình</h2>
+    <div class="row-flex" style="margin-bottom:12px">
+      <select id="selPeriod">
+        <option value="GiuaHKI_2026_2027">Giữa Kì 1 – 2026/2027</option>
+        <option value="CuoiHKI_2026_2027">Cuối Kì 1 – 2026/2027</option>
+        <option value="GiuaHKII_2026_2027">Giữa Kì 2 – 2026/2027</option>
+        <option value="CuoiHKII_2026_2027">Cuối Kì 2 – 2026/2027</option>
+      </select>
+      <select id="selGrades" multiple style="min-height:90px; flex:1">
+        <option value="10" selected>Khối 10</option>
+        <option value="11" selected>Khối 11</option>
+        <option value="12" selected>Khối 12</option>
+      </select>
+    </div>
+    <p class="sbd-hint">Khối: giữ Ctrl / Cmd để chọn nhiều khối cùng lúc.</p>
+  </div>
+
+  <!-- SBD card -->
+  <div class="card">
+    <h2>📋 Danh sách SBD</h2>
+    <textarea id="txtSBD" placeholder="Dán danh sách SBD vào đây, mỗi số một dòng...&#10;Ví dụ:&#10;12026001&#10;12026016&#10;12026218"></textarea>
+    <div class="sbd-hint">
+      <span id="sbdCount">0 SBD</span> · Mỗi dòng một SBD 8 chữ số.
+      <button onclick="loadDefaultSBD()" style="border:none;background:none;color:var(--primary);cursor:pointer;font-size:.78rem;text-decoration:underline;padding:0;margin-left:6px">Dùng sbd.txt mặc định</button>
+    </div>
+  </div>
+
+  <!-- Action -->
+  <button id="btnFetch" onclick="startFetch()">
+    <div class="spinner" id="spinner"></div>
+    <span id="btnText">🚀 Lấy điểm &amp; Xuất Excel</span>
+  </button>
+
+  <!-- Progress -->
+  <div id="progressWrap" class="card" style="display:none">
+    <h2>⏳ Tiến độ</h2>
+    <div class="progress-bar-track"><div class="progress-bar-fill" id="progressFill"></div></div>
+    <div id="progressText">Đang khởi động...</div>
+    <div id="logBox"></div>
+  </div>
+
+  <!-- Result -->
+  <div class="card" id="resultCard" style="display:none">
+    <h2>✅ Kết quả</h2>
+    <div class="stat-grid">
+      <div class="stat"><div class="stat-value" id="statTotal">0</div><div class="stat-label">SBD yêu cầu</div></div>
+      <div class="stat"><div class="stat-value" id="statFound">0</div><div class="stat-label">Tìm thấy</div></div>
+      <div class="stat"><div class="stat-value" id="statMissing">0</div><div class="stat-label">Chưa có dữ liệu</div></div>
+      <div class="stat"><div class="stat-value" id="statRows">0</div><div class="stat-label">Dòng kết quả</div></div>
+    </div>
+    <button id="btnDownload" onclick="downloadXLSX()">
+      ⬇️ Tải xuống Bang_diem_loc_theo_SBD.xlsx
+    </button>
+  </div>
+
+  <!-- Missing -->
+  <div class="card" id="missingSection" style="display:none">
+    <h2>⚠️ SBD chưa có dữ liệu</h2>
+    <p style="font-size:.82rem;color:var(--muted);margin-bottom:8px">Các SBD dưới đây không tìm thấy trong kỳ thi đã chọn:</p>
+    <div class="missing-list" id="missingList"></div>
+  </div>
+
+</main>
+
+<footer>Công cụ chỉ đọc dữ liệu Firestore công khai của findlqd.vercel.app · Không lưu trữ điểm số · Mã nguồn: GitHub</footer>
+
+<!-- SheetJS -->
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+<!-- Firebase SDK (compat) -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+const FB_CONFIG = {
+  apiKey: "AIzaSyA1maAy32d8_18HnNpoA9UXUXdGVpVVARE",
+  authDomain: "data-song-flxdt.firebaseapp.com",
+  projectId: "data-song-flxdt",
+  storageBucket: "data-song-flxdt.firebasestorage.app",
+  messagingSenderId: "874423564319",
+  appId: "1:874423564319:web:99015f14dabb8b9472fd2a"
+};
+
+const app = initializeApp(FB_CONFIG);
+const db  = getFirestore(app);
+
+/* ── SBD default list ── */
+const DEFAULT_SBDS = `12026001
+12026016
+12026017
+12026018
+12026020
+12026029
+12026045
+12026055
+12026065
+12026068
+12026069
+12026091
+12026093
+12026127
+12026128
+12026129
+12026130
+12026131
+12026134
+12026145
+12026162
+12026177
+12026207
+12026209
+12026216
+12026220
+12026231
+12026235
+12026241
+12026256
+12026260
+12026265
+12026273
+12026296
+12026299
+12026302
+12026313
+12026316
+12026317
+12026328
+12026331
+12026334
+12026338
+12026342
+12026377
+12026388
+12026390
+12026409
+12026022
+12026031
+12026036
+12026043
+12026050
+12026059
+12026063
+12026071
+12026078
+12026081
+12026088
+12026100
+12026104
+12026107
+12026110
+12026132
+12026135
+12026149
+12026150
+12026175
+12026197
+12026199
+12026200
+12026201
+12026205
+12026225
+12026232
+12026236
+12026240
+12026254
+12026269
+12026283
+12026285
+12026288
+12026292
+12026293
+12026295
+12026312
+12026321
+12026333
+12026360
+12026365
+12026374
+12026380
+12026404
+12026413
+12026419
+12026439
+12026006
+12026011
+12026015
+12026042
+12026056
+12026066
+12026084
+12026095
+12026103
+12026105
+12026115
+12026119
+12026121
+12026125
+12026126
+12026133
+12026139
+12026141
+12026158
+12026167
+12026170
+12026172
+12026173
+12026181
+12026192
+12026202
+12026226
+12026229
+12026234
+12026237
+12026238
+12026244
+12026262
+12026310
+12026314
+12026315
+12026318
+12026343
+12026382
+12026387
+12026399
+12026402
+12026426
+12026445
+12026446
+12026013
+12026023
+12026027
+12026062
+12026083
+12026096
+12026097
+12026123
+12026148
+12026153
+12026183
+12026187
+12026188
+12026193
+12026195
+12026204
+12026212
+12026228
+12026230
+12026243
+12026245
+12026247
+12026257
+12026263
+12026272
+12026274
+12026277
+12026280
+12026289
+12026304
+12026308
+12026327
+12026340
+12026346
+12026351
+12026355
+12026376
+12026378
+12026384
+12026389
+12026423
+12026425
+12026442
+12026444
+12026002
+12026004
+12026007
+12026008
+12026009
+12026014
+12026024
+12026035
+12026053
+12026064
+12026067
+12026074
+12026092
+12026102
+12026116
+12026117
+12026147
+12026154
+12026169
+12026174
+12026194
+12026224
+12026233
+12026239
+12026242
+12026246
+12026248
+12026251
+12026267
+12026279
+12026281
+12026335
+12026336
+12026350
+12026363
+12026366
+12026371
+12026372
+12026385
+12026397
+12026406
+12026412
+12026415
+12026418
+12026421
+12026028
+12026033
+12026041
+12026048
+12026051
+12026079
+12026122
+12026137
+12026143
+12026146
+12026156
+12026161
+12026165
+12026171
+12026176
+12026179
+12026180
+12026189
+12026191
+12026198
+12026208
+12026211
+12026249
+12026253
+12026264
+12026278
+12026291
+12026300
+12026301
+12026309
+12026319
+12026320
+12026347
+12026358
+12026359
+12026361
+12026369
+12026379
+12026393
+12026417
+12026420
+12026431
+12026432
+12026433
+12026437
+12026440
+12026034
+12026047
+12026058
+12026061
+12026077
+12026080
+12026099
+12026106
+12026111
+12026113
+12026114
+12026118
+12026120
+12026124
+12026136
+12026157
+12026159
+12026166
+12026168
+12026184
+12026186
+12026190
+12026203
+12026219
+12026221
+12026261
+12026275
+12026276
+12026284
+12026297
+12026298
+12026329
+12026357
+12026364
+12026367
+12026373
+12026381
+12026383
+12026391
+12026401
+12026414
+12026435
+12026436
+12026441
+12026451
+12026010
+12026026
+12026052
+12026085
+12026086
+12026089
+12026112
+12026140
+12026144
+12026155
+12026160
+12026178
+12026196
+12026210
+12026218
+12026259
+12026266
+12026268
+12026271
+12026282
+12026286
+12026294
+12026305
+12026322
+12026325
+12026337
+12026339
+12026341
+12026348
+12026349
+12026362
+12026368
+12026375
+12026386
+12026398
+12026403
+12026416
+12026422
+12026424
+12026429
+12026438
+12026450
+12026003
+12026005
+12026012
+12026019
+12026021
+12026040
+12026046
+12026049
+12026070
+12026072
+12026082
+12026094
+12026098
+12026101
+12026151
+12026152
+12026164
+12026185
+12026206
+12026215
+12026227
+12026252
+12026258
+12026270
+12026303
+12026306
+12026307
+12026311
+12026324
+12026326
+12026330
+12026332
+12026344
+12026345
+12026356
+12026370
+12026392
+12026394
+12026407
+12026410
+12026430
+12026434
+12026449
+12026025
+12026030
+12026032
+12026037
+12026038
+12026039
+12026044
+12026054
+12026057
+12026060
+12026073
+12026075
+12026076
+12026087
+12026090
+12026108
+12026109
+12026138
+12026142
+12026163
+12026182
+12026213
+12026214
+12026217
+12026222
+12026223
+12026250
+12026255
+12026287
+12026290
+12026323
+12026352
+12026353
+12026354
+12026395
+12026396
+12026400
+12026405
+12026408
+12026411
+12026427
+12026428
+12026443
+12026447
+12026448`.trim();
+
+/* ── State ── */
+let _xlsxBlob = null;
+
+/* ── Helpers ── */
+function parseSBDs(raw) {
+  return [...new Set(raw.match(/\d{8}/g) || [])];
+}
+function normSBD(v) {
+  if (v == null) return "";
+  let s = String(v).trim();
+  if (/^\d+\.0+$/.test(s)) s = s.split(".")[0];
+  return s;
+}
+function log(msg, cls = "") {
+  const box = document.getElementById("logBox");
+  box.style.display = "block";
+  const line = document.createElement("div");
+  if (cls) line.className = cls;
+  line.textContent = msg;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+function setProgress(pct, text) {
+  document.getElementById("progressFill").style.width = pct + "%";
+  document.getElementById("progressText").textContent = text;
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/* ── Load default SBD ── */
+window.loadDefaultSBD = function() {
+  document.getElementById("txtSBD").value = DEFAULT_SBDS;
+  updateCount();
+};
+
+/* ── SBD count ── */
+function updateCount() {
+  const sbds = parseSBDs(document.getElementById("txtSBD").value);
+  document.getElementById("sbdCount").textContent = sbds.length + " SBD";
+}
+document.getElementById("txtSBD").addEventListener("input", updateCount);
+// Auto-load on page start
+window.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("txtSBD").value = DEFAULT_SBDS;
+  updateCount();
+});
+
+/* ── findSBDInRows: check row[3] (site's own logic) + headerRow lookup ── */
+function findSBDInRows(rows, headerRow, targetSBD) {
+  // Try headerRow SBD column first
+  let sbdIdx = 3;
+  if (Array.isArray(headerRow) && headerRow.length > 0) {
+    const pats = ["sbd", "số báo danh", "so bao danh", "số bd"];
+    for (let i = 0; i < headerRow.length; i++) {
+      const lbl = String(headerRow[i] || "").toLowerCase().trim();
+      if (pats.some(p => lbl.includes(p))) { sbdIdx = i; break; }
+    }
+  }
+  for (const row of rows) {
+    if (!Array.isArray(row)) continue;
+    const cell = normSBD(row[sbdIdx] ?? row[3] ?? "");
+    if (cell === targetSBD) return row;
+    // Also try all columns as fallback
+    for (let i = 0; i < row.length; i++) {
+      if (normSBD(row[i]) === targetSBD) return row;
+    }
+  }
+  return null;
+}
+
+/* ── Fetch one grade doc ── */
+async function fetchGradeDoc(periodId, grade) {
+  // Try sharded doc first
+  const shardRef = doc(db, "exam_grades", `${periodId}_grade_${grade}`);
+  let snap = await getDoc(shardRef);
+  if (!snap.exists() && periodId === "GiuaHKI_2026_2027") {
+    const legacyRef = doc(db, "exam_grades", `grade_${grade}`);
+    snap = await getDoc(legacyRef);
+  }
+  if (!snap.exists()) return null;
+  const d = snap.data();
+  let studentRows = [];
+  if (typeof d.studentRowsJson === "string") {
+    try { studentRows = JSON.parse(d.studentRowsJson); } catch {}
+  } else if (Array.isArray(d.studentRows)) {
+    studentRows = d.studentRows;
+  }
+  return {
+    grade,
+    periodId,
+    fileName: d.fileName || `Khối_${grade}.xlsx`,
+    headerRow: Array.isArray(d.headerRow) ? d.headerRow : [],
+    studentRows,
+  };
+}
+
+/* ── XLSX builder (pure JS, no dependency) ── */
+function buildXLSX(records, sbdList, matched) {
+  if (typeof XLSX === "undefined") throw new Error("SheetJS chưa tải xong.");
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: Summary
+  if (records.length > 0) {
+    // Build union headers
+    const unionSet = [];
+    for (const r of records) {
+      for (const h of r.headerRow) {
+        const lbl = String(h || "").trim() || `Cột${unionSet.length+1}`;
+        if (!unionSet.includes(lbl)) unionSet.push(lbl);
+      }
+    }
+    if (unionSet.length === 0) unionSet.push("SBD", "Họ và tên", "Dữ liệu");
+
+    const aoa = [["Kỳ thi", "Khối", ...unionSet]];
+    for (const r of records) {
+      const hdrs = r.headerRow.map(h => String(h || "").trim());
+      const mapped = {};
+      hdrs.forEach((h, i) => { if (h) mapped[h] = r.row[i] ?? ""; });
+      aoa.push([r.periodId, r.grade, ...unionSet.map(h => mapped[h] ?? "")]);
+    }
+    const ws1 = XLSX.utils.aoa_to_sheet(aoa);
+    XLSX.utils.book_append_sheet(wb, ws1, "Tong_hop");
+  }
+
+  // Sheet 2: Status
+  const statusAoa = [["SBD", "Trạng thái"]];
+  for (const s of sbdList) statusAoa.push([s, matched.has(s) ? "Đã tìm thấy" : "Chưa có trong file nguồn"]);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(statusAoa), "Trang_thai_SBD");
+
+  // Per-grade sheets
+  const perGrade = {};
+  for (const r of records) {
+    const key = r.grade ? `Khoi_${r.grade}` : r.periodId;
+    if (!perGrade[key]) perGrade[key] = { header: ["SBD", ...r.headerRow], rows: [] };
+    perGrade[key].rows.push([r.sbd, ...r.row]);
+  }
+  for (const [name, data] of Object.entries(perGrade)) {
+    const aoa = [data.header, ...data.rows];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), name.slice(0,31));
+  }
+
+  return XLSX.write(wb, { bookType: "xlsx", type: "array" });
+}
+
+/* ── Main fetch ── */
+window.startFetch = async function() {
+  const rawSBD   = document.getElementById("txtSBD").value;
+  const sbdList  = parseSBDs(rawSBD);
+  const periodId = document.getElementById("selPeriod").value;
+  const gradeOpts= document.getElementById("selGrades");
+  const grades   = [...gradeOpts.options].filter(o=>o.selected).map(o=>o.value);
+
+  if (sbdList.length === 0) {
+    alert("Vui lòng nhập ít nhất một SBD 8 chữ số."); return;
+  }
+  if (grades.length === 0) {
+    alert("Vui lòng chọn ít nhất một khối."); return;
+  }
+
+  // Reset UI
+  _xlsxBlob = null;
+  const btn = document.getElementById("btnFetch");
+  btn.disabled = true;
+  document.getElementById("spinner").style.display = "block";
+  document.getElementById("btnText").textContent = "Đang xử lý...";
+  document.getElementById("progressWrap").style.display = "flex";
+  document.getElementById("resultCard").style.display = "none";
+  document.getElementById("missingSection").style.display = "none";
+  document.getElementById("logBox").innerHTML = "";
+  document.getElementById("logBox").style.display = "none";
+  setProgress(0, "Bắt đầu...");
+
+  const wanted = new Set(sbdList);
+  const records = [];
+  const matched = new Set();
+
+  try {
+    log(`📋 ${sbdList.length} SBD · Kỳ: ${periodId} · Khối: ${grades.join(", ")}`, "log-info");
+
+    for (let gi = 0; gi < grades.length; gi++) {
+      const grade = grades[gi];
+      const pct = Math.round((gi / grades.length) * 70);
+      setProgress(pct, `Đang tải dữ liệu Khối ${grade}...`);
+      log(`⬇️  Đang tải Khối ${grade}...`);
+
+      let gradeData;
+      try {
+        gradeData = await fetchGradeDoc(periodId, grade);
+      } catch (e) {
+        if (e?.code === "resource-exhausted") {
+          log(`⚠️  Khối ${grade}: Firestore hết quota – thử lại sau.`, "log-warn");
+        } else {
+          log(`❌ Khối ${grade}: ${e?.message || e}`, "log-err");
+        }
+        continue;
+      }
+
+      if (!gradeData) {
+        log(`ℹ️  Khối ${grade}: Không có dữ liệu cho kỳ này.`, "log-warn");
+        continue;
+      }
+
+      log(`✅ Khối ${grade}: ${gradeData.studentRows.length} học sinh trong file.`, "log-ok");
+
+      for (const sbd of sbdList) {
+        const row = findSBDInRows(gradeData.studentRows, gradeData.headerRow, sbd);
+        if (row) {
+          records.push({ sbd, grade, periodId, headerRow: gradeData.headerRow, row });
+          matched.add(sbd);
+        }
+      }
+      log(`   Tìm thấy ${[...matched].filter(s => records.some(r=>r.sbd===s&&r.grade===grade)).length} SBD trong Khối ${grade}.`);
+      await sleep(300); // gentle rate limit
+    }
+
+    setProgress(80, "Đang tạo file Excel...");
+    log("📊 Đang tạo file Excel...", "log-info");
+
+    const xlsxArr = buildXLSX(records, sbdList, matched);
+    _xlsxBlob = new Blob([xlsxArr], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+
+    setProgress(100, "Hoàn thành!");
+    log(`🎉 Hoàn thành! ${matched.size}/${sbdList.length} SBD tìm thấy.`, "log-ok");
+
+    // Show result
+    const missing = sbdList.filter(s => !matched.has(s));
+    document.getElementById("statTotal").textContent   = sbdList.length;
+    document.getElementById("statFound").textContent   = matched.size;
+    document.getElementById("statMissing").textContent = missing.length;
+    document.getElementById("statRows").textContent    = records.length;
+    document.getElementById("resultCard").style.display = "block";
+
+    if (missing.length > 0) {
+      const ml = document.getElementById("missingList");
+      ml.innerHTML = missing.map(s => `<span class="missing-tag">${s}</span>`).join("");
+      document.getElementById("missingSection").style.display = "block";
+    }
+
+  } catch(e) {
+    log(`❌ Lỗi: ${e?.message || e}`, "log-err");
+    setProgress(0, "Lỗi – xem log bên dưới.");
+  } finally {
+    btn.disabled = false;
+    document.getElementById("spinner").style.display = "none";
+    document.getElementById("btnText").textContent = "🚀 Lấy điểm & Xuất Excel";
+  }
+};
+
+/* ── Download ── */
+window.downloadXLSX = function() {
+  if (!_xlsxBlob) return;
+  const url = URL.createObjectURL(_xlsxBlob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "Bang_diem_loc_theo_SBD.xlsx";
+  a.click(); URL.revokeObjectURL(url);
+};
+</script>
+</body>
+</html>
