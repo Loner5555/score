@@ -108,6 +108,17 @@
     .missing-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
     .missing-tag { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; padding: 3px 10px; border-radius: 999px; font-size: .8rem; }
 
+    /* Table preview */
+    .table-container { max-height: 420px; overflow: auto; border: 1px solid var(--border); border-radius: 8px; background: white; margin-top: 12px; }
+    table { width: 100%; border-collapse: collapse; font-size: .82rem; text-align: left; }
+    th, td { padding: 9px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    th { background: #f8fafc; font-weight: 600; position: sticky; top: 0; z-index: 5; color: var(--muted); border-bottom: 2px solid var(--border); }
+    tr:hover td { background: #f1f5f9; }
+
+    /* Dropzone */
+    .dropzone { border: 2px dashed #93c5fd; background: #f0f7ff; border-radius: var(--radius); padding: 18px 20px; transition: .2s; cursor: pointer; }
+    .dropzone:hover { border-color: var(--primary); background: #e0effe; }
+
     .alert { border-radius: 8px; padding: 12px 16px; font-size: .85rem; display: flex; gap: 10px; align-items: flex-start; }
     .alert-warn { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
     .alert-err  { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
@@ -153,19 +164,48 @@
 
   <!-- SBD card -->
   <div class="card">
-    <h2>📋 Danh sách SBD</h2>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <h2 style="margin-bottom:0">📋 Danh sách SBD</h2>
+      <label style="font-size:.8rem; color:var(--primary); cursor:pointer; font-weight:500; display:flex; align-items:center; gap:4px;">
+        📁 Nạp từ file .txt
+        <input type="file" accept=".txt" style="display:none" onchange="handleSBDFile(event)" />
+      </label>
+    </div>
     <textarea id="txtSBD" placeholder="Dán danh sách SBD vào đây, mỗi số một dòng...&#10;Ví dụ:&#10;12026001&#10;12026016&#10;12026218"></textarea>
-    <div class="sbd-hint">
-      <span id="sbdCount">0 SBD</span> · Mỗi dòng một SBD 8 chữ số.
-      <button onclick="loadDefaultSBD()" style="border:none;background:none;color:var(--primary);cursor:pointer;font-size:.78rem;text-decoration:underline;padding:0;margin-left:6px">Dùng sbd.txt mặc định</button>
+    <div class="sbd-hint" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+      <div>
+        <span id="sbdCount">0 SBD</span> · Mỗi dòng một SBD 8 chữ số.
+        <button onclick="loadDefaultSBD()" style="border:none;background:none;color:var(--primary);cursor:pointer;font-size:.78rem;text-decoration:underline;padding:0;margin-left:6px">Dùng 451 SBD mặc định</button>
+      </div>
+      <button id="btnLoadCache" onclick="loadFromCache()" style="display:none; border:none; background:#dcfce7; color:#15803d; font-size:.78rem; font-weight:600; padding:3px 8px; border-radius:4px; cursor:pointer;">
+        💾 Xem lại dữ liệu đã lưu
+      </button>
     </div>
   </div>
 
   <!-- Action -->
   <button id="btnFetch" onclick="startFetch()">
     <div class="spinner" id="spinner"></div>
-    <span id="btnText">🚀 Lấy điểm &amp; Xuất Excel</span>
+    <span id="btnText">🚀 Lấy điểm Online &amp; Xuất Excel</span>
   </button>
+
+  <!-- Offline fallback dropzone card -->
+  <div class="dropzone" id="dropArea" onclick="document.getElementById('fileOffline').click()" ondragover="event.preventDefault()" ondrop="handleFileDrop(event)">
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+      <div>
+        <div style="font-size: .92rem; font-weight: 700; color: #1d4ed8; display:flex; align-items:center; gap:6px;">
+          📂 Chế độ Dự phòng khi Web Hết Quota (Offline)
+        </div>
+        <p style="font-size: .8rem; color: var(--muted); margin-top: 4px;">
+          Kéo thả hoặc tải lên file Excel (.xlsx, .csv, .json) từ máy tính để lọc 451 SBD ngay lập tức mà <strong>không cần mạng</strong>.
+        </p>
+      </div>
+      <label style="background: white; border: 1px solid #bfdbfe; padding: 8px 16px; border-radius: 8px; font-size: .82rem; font-weight: 600; cursor: pointer; color: var(--primary); box-shadow:0 1px 2px rgba(0,0,0,.05);" onclick="event.stopPropagation()">
+        Chọn file nguồn
+        <input type="file" id="fileOffline" accept=".xlsx,.xls,.csv,.json" style="display: none;" onchange="handleOfflineFile(event)" />
+      </label>
+    </div>
+  </div>
 
   <!-- Progress -->
   <div id="progressWrap" class="card" style="display:none">
@@ -184,9 +224,24 @@
       <div class="stat"><div class="stat-value" id="statMissing">0</div><div class="stat-label">Chưa có dữ liệu</div></div>
       <div class="stat"><div class="stat-value" id="statRows">0</div><div class="stat-label">Dòng kết quả</div></div>
     </div>
-    <button id="btnDownload" onclick="downloadXLSX()">
+
+    <button id="btnDownload" onclick="downloadXLSX()" style="margin-bottom: 20px;">
       ⬇️ Tải xuống Bang_diem_loc_theo_SBD.xlsx
     </button>
+
+    <!-- Table preview -->
+    <div style="border-top: 1px solid var(--border); padding-top: 18px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+        <h3 style="font-size: .9rem; font-weight: 700; color: var(--text);">👀 Xem trước bảng điểm trực tiếp</h3>
+        <input type="text" id="previewSearch" placeholder="🔍 Tìm SBD, Tên, Lớp..." oninput="filterPreviewTable()" style="padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: .82rem; width: 200px;" />
+      </div>
+      <div class="table-container">
+        <table id="previewTable">
+          <thead id="previewHead"></thead>
+          <tbody id="previewBody"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <!-- Quota warning banner -->
@@ -731,6 +786,235 @@ const DEFAULT_SBDS = `12026001
 
 /* ── State ── */
 let _xlsxBlob = null;
+let _currentRecords = [];
+
+/* ── Nạp file SBD (.txt) ── */
+window.handleSBDFile = function(e) {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    const text = evt.target.result;
+    document.getElementById("txtSBD").value = text;
+    updateCount();
+    log(`📂 Đã nạp danh sách SBD từ file: ${file.name}`, "log-ok");
+  };
+  reader.readAsText(file, "utf-8");
+};
+
+/* ── Lưu và Tải Cache trình duyệt ── */
+function saveToCache(periodId, records) {
+  if (!records || records.length === 0) return;
+  try {
+    localStorage.setItem(`lqd_cache_${periodId}`, JSON.stringify(records));
+    checkCache(periodId);
+  } catch(e) {}
+}
+
+function checkCache(periodId) {
+  try {
+    const saved = localStorage.getItem(`lqd_cache_${periodId}`);
+    const btn = document.getElementById("btnLoadCache");
+    if (saved && btn) {
+      const data = JSON.parse(saved);
+      btn.style.display = "inline-block";
+      btn.textContent = `💾 Xem lại ${data.length} điểm đã lưu`;
+    }
+  } catch(e) {}
+}
+
+window.loadFromCache = function() {
+  const periodId = document.getElementById("selPeriod").value;
+  try {
+    const saved = localStorage.getItem(`lqd_cache_${periodId}`);
+    if (!saved) return alert("Chưa có dữ liệu lưu trong máy cho kỳ này.");
+    const records = JSON.parse(saved);
+    const rawSBD = document.getElementById("txtSBD").value;
+    const sbdList = parseSBDs(rawSBD);
+    const matched = new Set(records.map(r => r.sbd));
+
+    _currentRecords = records;
+    const xlsxArr = buildXLSX(records, sbdList, matched);
+    _xlsxBlob = new Blob([xlsxArr], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    });
+
+    renderStatsAndTable(records, sbdList, matched);
+    log(`💾 Đã nạp ${records.length} điểm từ bộ nhớ máy tính mà không cần gọi mạng!`, "log-ok");
+  } catch(e) {
+    alert("Lỗi khi đọc bộ nhớ máy: " + e.message);
+  }
+};
+
+/* ── Hiển thị bảng xem trước (Live Preview Table) ── */
+function renderStatsAndTable(records, sbdList, matched) {
+  _currentRecords = records;
+  const missing = sbdList.filter(s => !matched.has(s));
+  document.getElementById("statTotal").textContent   = sbdList.length;
+  document.getElementById("statFound").textContent   = matched.size;
+  document.getElementById("statMissing").textContent = missing.length;
+  document.getElementById("statRows").textContent    = records.length;
+  document.getElementById("resultCard").style.display = "block";
+
+  if (missing.length > 0) {
+    const ml = document.getElementById("missingList");
+    ml.innerHTML = missing.map(s => `<span class="missing-tag">${s}</span>`).join("");
+    document.getElementById("missingSection").style.display = "block";
+  } else {
+    document.getElementById("missingSection").style.display = "none";
+  }
+
+  // Render Table
+  renderPreviewTable(records);
+}
+
+function renderPreviewTable(records) {
+  const head = document.getElementById("previewHead");
+  const body = document.getElementById("previewBody");
+  head.innerHTML = "";
+  body.innerHTML = "";
+  if (!records || records.length === 0) return;
+
+  // Header columns
+  const first = records[0];
+  const cols = ["SBD", "Khối", ...(first.headerRow || [])];
+  const trH = document.createElement("tr");
+  cols.forEach(c => {
+    const th = document.createElement("th");
+    th.textContent = c;
+    trH.appendChild(th);
+  });
+  head.appendChild(trH);
+
+  // Rows (hiển thị tối đa 200 dòng đầu để mượt mà)
+  records.slice(0, 200).forEach(r => {
+    const tr = document.createElement("tr");
+    const tdSBD = document.createElement("td");
+    tdSBD.innerHTML = `<strong>${r.sbd}</strong>`;
+    tr.appendChild(tdSBD);
+
+    const tdGrade = document.createElement("td");
+    tdGrade.textContent = r.grade || "";
+    tr.appendChild(tdGrade);
+
+    (r.row || []).forEach(val => {
+      const td = document.createElement("td");
+      td.textContent = val ?? "";
+      tr.appendChild(td);
+    });
+    body.appendChild(tr);
+  });
+}
+
+window.filterPreviewTable = function() {
+  const q = document.getElementById("previewSearch").value.toLowerCase().trim();
+  const filtered = _currentRecords.filter(r => {
+    if (r.sbd.toLowerCase().includes(q)) return true;
+    return (r.row || []).some(v => String(v ?? "").toLowerCase().includes(q));
+  });
+  renderPreviewTable(filtered);
+};
+
+/* ── CHẾ ĐỘ OFFLINE: KÉO THẢ HOẶC CHỌN FILE EXCEL / JSON ── */
+window.handleFileDrop = function(e) {
+  e.preventDefault();
+  const file = e.dataTransfer?.files?.[0];
+  if (file) processOfflineFile(file);
+};
+
+window.handleOfflineFile = function(e) {
+  const file = e.target.files?.[0];
+  if (file) processOfflineFile(file);
+};
+
+function processOfflineFile(file) {
+  const rawSBD = document.getElementById("txtSBD").value;
+  const sbdList = parseSBDs(rawSBD);
+  if (sbdList.length === 0) return alert("Vui lòng có ít nhất 1 SBD.");
+
+  const periodId = document.getElementById("selPeriod").value;
+  const wanted = new Set(sbdList);
+  const records = [];
+  const matched = new Set();
+
+  log(`📂 Đang phân tích file offline: ${file.name}...`, "log-info");
+  document.getElementById("progressWrap").style.display = "flex";
+  setProgress(50, "Đang đọc dữ liệu file offline...");
+
+  const reader = new FileReader();
+  reader.onload = function(evt) {
+    try {
+      if (file.name.endsWith(".json")) {
+        const json = JSON.parse(evt.target.result);
+        // Hỗ trợ cả mảng hoặc object
+        const items = Array.isArray(json) ? json : [json];
+        items.forEach(doc => {
+          let rows = [];
+          if (typeof doc.studentRowsJson === "string") {
+            try { rows = JSON.parse(doc.studentRowsJson); } catch {}
+          } else if (Array.isArray(doc.studentRows)) rows = doc.studentRows;
+
+          const hdrs = Array.isArray(doc.headerRow) ? doc.headerRow : [];
+          rows.forEach(row => {
+            for (const sbd of sbdList) {
+              if (row.some(c => normSBD(c) === sbd)) {
+                records.push({ sbd, grade: doc.grade || "12", periodId, headerRow: hdrs, row });
+                matched.add(sbd);
+              }
+            }
+          });
+        });
+      } else {
+        // Excel hoặc CSV qua SheetJS
+        const data = new Uint8Array(evt.target.result);
+        const wb = XLSX.read(data, { type: "array" });
+        wb.SheetNames.forEach(sheetName => {
+          const ws = wb.Sheets[sheetName];
+          const matrix = XLSX.utils.sheet_to_json(ws, { header: 1 });
+          if (!matrix || matrix.length < 2) return;
+
+          // Tìm dòng header có SBD
+          let headerIdx = 0;
+          let sbdCol = 3;
+          for (let ri = 0; ri < Math.min(12, matrix.length); ri++) {
+            const row = matrix[ri] || [];
+            const idx = row.findIndex(c => String(c || "").toLowerCase().includes("sbd") || String(c || "").toLowerCase().includes("số báo danh"));
+            if (idx >= 0) { headerIdx = ri; sbdCol = idx; break; }
+          }
+          const headers = matrix[headerIdx] || [];
+
+          for (let ri = headerIdx + 1; ri < matrix.length; ri++) {
+            const row = matrix[ri] || [];
+            if (!row || row.length === 0) continue;
+            for (const sbd of sbdList) {
+              if (row.some(c => normSBD(c) === sbd)) {
+                records.push({ sbd, grade: "12", periodId: sheetName, headerRow: headers, row });
+                matched.add(sbd);
+              }
+            }
+          }
+        });
+      }
+
+      setProgress(90, "Đang tạo file Excel đầu ra...");
+      const xlsxArr = buildXLSX(records, sbdList, matched);
+      _xlsxBlob = new Blob([xlsxArr], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      });
+
+      saveToCache(periodId, records);
+      renderStatsAndTable(records, sbdList, matched);
+      setProgress(100, "Xong!");
+      log(`🎉 File offline đã lọc thành công! Khớp ${matched.size}/${sbdList.length} SBD.`, "log-ok");
+    } catch(err) {
+      log(`❌ Lỗi đọc file offline: ${err.message}`, "log-err");
+      alert("Không thể đọc file: " + err.message);
+    }
+  };
+
+  if (file.name.endsWith(".json")) reader.readAsText(file, "utf-8");
+  else reader.readAsArrayBuffer(file);
+}
 
 /* ── Helpers ── */
 function parseSBDs(raw) {
@@ -773,6 +1057,9 @@ document.getElementById("txtSBD").addEventListener("input", updateCount);
 window.addEventListener("DOMContentLoaded", () => {
   document.getElementById("txtSBD").value = DEFAULT_SBDS;
   updateCount();
+  const periodSel = document.getElementById("selPeriod");
+  checkCache(periodSel.value);
+  periodSel.addEventListener("change", () => checkCache(periodSel.value));
 });
 
 /* ── findSBDInRows ── */
@@ -1107,19 +1394,9 @@ window.startFetch = async function() {
     setProgress(100, "Hoàn tất!");
     log(`🎉 Hoàn tất! Tìm thấy ${matched.size}/${sbdList.length} SBD.`, "log-ok");
 
-    // Hiển thị kết quả
-    const missing = sbdList.filter(s => !matched.has(s));
-    document.getElementById("statTotal").textContent   = sbdList.length;
-    document.getElementById("statFound").textContent   = matched.size;
-    document.getElementById("statMissing").textContent = missing.length;
-    document.getElementById("statRows").textContent    = records.length;
-    document.getElementById("resultCard").style.display = "block";
-
-    if (missing.length > 0) {
-      const ml = document.getElementById("missingList");
-      ml.innerHTML = missing.map(s => `<span class="missing-tag">${s}</span>`).join("");
-      document.getElementById("missingSection").style.display = "block";
-    }
+    // Lưu vào cache và hiển thị bảng xem trước
+    saveToCache(periodId, records);
+    renderStatsAndTable(records, sbdList, matched);
 
   } catch(e) {
     log(`❌ Lỗi: ${e?.message || e}`, "log-err");
@@ -1127,31 +1404,7 @@ window.startFetch = async function() {
   } finally {
     btn.disabled = false;
     document.getElementById("spinner").style.display = "none";
-    document.getElementById("btnText").textContent = "🚀 Lấy điểm & Xuất Excel";
-  }
-};
-
-    // Update stats
-    const missing = sbdList.filter(s => !matched.has(s));
-    document.getElementById("statTotal").textContent   = sbdList.length;
-    document.getElementById("statFound").textContent   = matched.size;
-    document.getElementById("statMissing").textContent = missing.length;
-    document.getElementById("statRows").textContent    = records.length;
-    document.getElementById("resultCard").style.display = "block";
-
-    if (missing.length > 0) {
-      const ml = document.getElementById("missingList");
-      ml.innerHTML = missing.map(s => `<span class="missing-tag">${s}</span>`).join("");
-      document.getElementById("missingSection").style.display = "block";
-    }
-
-  } catch(e) {
-    log(`❌ Lỗi nghiêm trọng: ${e?.message || e}`, "log-err");
-    setProgress(0, "Lỗi – xem log bên dưới.");
-  } finally {
-    btn.disabled = false;
-    document.getElementById("spinner").style.display = "none";
-    document.getElementById("btnText").textContent = "🚀 Lấy điểm & Xuất Excel";
+    document.getElementById("btnText").textContent = "🚀 Lấy điểm Online & Xuất Excel";
   }
 };
 
