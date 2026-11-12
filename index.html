@@ -142,11 +142,13 @@
         <option value="GiuaHKII_2026_2027">Giữa Kì 2 – 2026/2027</option>
         <option value="CuoiHKII_2026_2027">Cuối Kì 2 – 2026/2027</option>
       </select>
-      <input type="hidden" id="selGrades" value="12" />
-      <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;font-size:.85rem;color:#1e40af;flex:1">
-        📚 Khối <strong>12</strong> – THPT Lê Quý Đôn
-      </div>
+      <select id="selGrades" multiple style="min-height:90px; flex:1">
+        <option value="10" selected>Khối 10</option>
+        <option value="11" selected>Khối 11</option>
+        <option value="12" selected>Khối 12</option>
+      </select>
     </div>
+    <p class="sbd-hint">Khối: giữ Ctrl / Cmd để chọn nhiều khối cùng lúc.</p>
   </div>
 
   <!-- SBD card -->
@@ -848,7 +850,8 @@ window.startFetch = async function() {
   const rawSBD   = document.getElementById("txtSBD").value;
   const sbdList  = parseSBDs(rawSBD);
   const periodId = document.getElementById("selPeriod").value;
-  const grades   = ["12"];
+  const gradeOpts= document.getElementById("selGrades");
+  const grades   = [...gradeOpts.options].filter(o=>o.selected).map(o=>o.value);
 
   if (sbdList.length === 0) {
     alert("Vui lòng nhập ít nhất một SBD 8 chữ số."); return;
