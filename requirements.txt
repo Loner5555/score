@@ -1,0 +1,12 @@
+# DỰ ÁN LQD SCORE EXPORTER
+# ====================================================================
+# Điểm đặc biệt của dự án: ZERO EXTERNAL DEPENDENCY!
+# Toàn bộ code Python (auto_crawl.py, export_lqd_scores.py) được viết
+# 100% bằng thư viện có sẵn trong Python chuẩn (Standard Library):
+# - urllib.request (gọi REST API)
+# - json, re, csv (xử lý dữ liệu)
+# - zipfile, xml.etree (tự dựng file .xlsx chuẩn không cần openpyxl/pandas)
+#
+# => BẠN KHÔNG CẦN CHẠY "pip install" BẤT KỲ THƯ VIỆN NÀO!
+# Chỉ cần cài đặt Python 3.10+ là chạy được ngay lập tức trên mọi máy tính và Termux.
+# ====================================================================
