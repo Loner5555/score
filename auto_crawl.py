@@ -168,6 +168,30 @@ def main():
     build_workbook(records, sbd_list, matched, output_path)
     print(f"\n[🎉] ĐÃ XUẤT FILE THÀNH CÔNG: {output_path.resolve()}")
     print(f"[✓] Số SBD có dữ liệu: {len(matched)} / {len(sbd_list)}")
+
+    # ĐẢM BẢO LƯU FILE TRÊN ANDROID / TERMUX
+    android_destinations = [
+        Path("/sdcard/Download"),
+        Path.home() / "storage" / "downloads",
+        Path.home() / "storage" / "shared" / "Download"
+    ]
+    saved_to_android = False
+    import shutil
+    for adir in android_destinations:
+        try:
+            if adir.exists():
+                dest_file = adir / "Bang_diem_tu_dong.xlsx"
+                shutil.copy2(output_path, dest_file)
+                print(f"[📱 ANDROID] Đã tự động sao chép file vào: {dest_file}")
+                saved_to_android = True
+                break
+        except Exception as e:
+            pass
+
+    if not saved_to_android and os.path.exists("/sdcard"):
+        print("[!] Lưu ý: Nếu bạn dùng Termux, hãy chạy 'termux-setup-storage' để file tự xuất ra thư mục Download của điện thoại.")
+
+    return 0
     return 0
 
 
