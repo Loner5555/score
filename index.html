@@ -272,10 +272,11 @@
    Tránh domain restriction của API key
    ════════════════════════════════════════════════════ */
 const FB = {
-  projectId: "data-song-flxdt",
-  apiKey:    "AIzaSyA1maAy32d8_18HnNpoA9UXUXdGVpVVARE",
+  projectId:  "data-song-flxdt",
+  databaseId: "ai-studio-hthngtracuimthig-0400ea51-2a75-479c-8b07-00f33ebb303e",
+  apiKey:     "AIzaSyA1maAy32d8_18HnNpoA9UXUXdGVpVVARE",
 };
-const FS_BASE = `https://firestore.googleapis.com/v1/projects/${FB.projectId}/databases/(default)/documents`;
+const FS_BASE = `https://firestore.googleapis.com/v1/projects/${FB.projectId}/databases/${FB.databaseId}/documents`;
 
 /* Gọi Firestore REST – lấy 1 document */
 async function fsGetDoc(collection, docId) {
