@@ -718,9 +718,8 @@ window.addEventListener("DOMContentLoaded", () => {
   updateCount();
 });
 
-/* ── findSBDInRows: check row[3] (site's own logic) + headerRow lookup ── */
+/* ── findSBDInRows ── */
 function findSBDInRows(rows, headerRow, targetSBD) {
-  // Try headerRow SBD column first
   let sbdIdx = 3;
   if (Array.isArray(headerRow) && headerRow.length > 0) {
     const pats = ["sbd", "số báo danh", "so bao danh", "số bd"];
@@ -731,9 +730,11 @@ function findSBDInRows(rows, headerRow, targetSBD) {
   }
   for (const row of rows) {
     if (!Array.isArray(row)) continue;
-    const cell = normSBD(row[sbdIdx] ?? row[3] ?? "");
-    if (cell === targetSBD) return row;
-    // Also try all columns as fallback
+    // Check primary index
+    if (normSBD(row[sbdIdx]) === targetSBD) return row;
+    // Check index 3 (site's own logic)
+    if (sbdIdx !== 3 && normSBD(row[3]) === targetSBD) return row;
+    // Full scan fallback
     for (let i = 0; i < row.length; i++) {
       if (normSBD(row[i]) === targetSBD) return row;
     }
@@ -741,14 +742,13 @@ function findSBDInRows(rows, headerRow, targetSBD) {
   return null;
 }
 
-/* ── Fetch one grade doc ── */
+/* ── Fetch one grade doc (bulk – contains all students) ── */
 async function fetchGradeDoc(periodId, grade) {
-  // Try sharded doc first
   const shardRef = doc(db, "exam_grades", `${periodId}_grade_${grade}`);
   let snap = await getDoc(shardRef);
+  // Legacy fallback for GiuaHKI
   if (!snap.exists() && periodId === "GiuaHKI_2026_2027") {
-    const legacyRef = doc(db, "exam_grades", `grade_${grade}`);
-    snap = await getDoc(legacyRef);
+    snap = await getDoc(doc(db, "exam_grades", `grade_${grade}`));
   }
   if (!snap.exists()) return null;
   const d = snap.data();
@@ -761,13 +761,43 @@ async function fetchGradeDoc(periodId, grade) {
   return {
     grade,
     periodId,
+    isSharded: !!d.isSharded,
     fileName: d.fileName || `Khối_${grade}.xlsx`,
     headerRow: Array.isArray(d.headerRow) ? d.headerRow : [],
     studentRows,
   };
 }
 
-/* ── XLSX builder (pure JS, no dependency) ── */
+/* ── Fetch individual student score from student_scores collection ── */
+async function fetchStudentScore(periodId, sbd) {
+  const ref = doc(db, "student_scores", `${periodId}_${sbd}`);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return null;
+  const d = snap.data();
+  return {
+    grade: d.grade || "?",
+    periodId,
+    fileName: d.fileName || `Khối_${d.grade}.xlsx`,
+    headerRow: Array.isArray(d.headerRow) ? d.headerRow : [],
+    studentRow: Array.isArray(d.studentRow) ? d.studentRow : [],
+    sbd: d.sbd || sbd,
+  };
+}
+
+/* ── CONCURRENCY HELPER: run promises in batches ── */
+async function batchRun(items, batchSize, fn, onDone) {
+  const results = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const res = await Promise.allSettled(batch.map(fn));
+    results.push(...res);
+    if (onDone) onDone(Math.min(i + batchSize, items.length), items.length);
+    await sleep(200); // gentle rate-limit between batches
+  }
+  return results;
+}
+
+/* ── XLSX builder ── */
 function buildXLSX(records, sbdList, matched) {
   if (typeof XLSX === "undefined") throw new Error("SheetJS chưa tải xong.");
   const wb = XLSX.utils.book_new();
@@ -843,59 +873,137 @@ window.startFetch = async function() {
   document.getElementById("logBox").style.display = "none";
   setProgress(0, "Bắt đầu...");
 
-  const wanted = new Set(sbdList);
+  const wanted  = new Set(sbdList);
   const records = [];
   const matched = new Set();
+  let quotaHit  = false;
+
+  // ── Shared grade-doc cache (grade → data) ──
+  const gradeCache = {};
 
   try {
     log(`📋 ${sbdList.length} SBD · Kỳ: ${periodId} · Khối: ${grades.join(", ")}`, "log-info");
 
+    // ══════════════════════════════════════════
+    // PHASE 1: Tải bulk doc theo khối (1 req/khối)
+    // ══════════════════════════════════════════
+    log("", "");
+    log("── PHASE 1: Tải dữ liệu bulk theo khối ──", "log-info");
+
     for (let gi = 0; gi < grades.length; gi++) {
       const grade = grades[gi];
-      const pct = Math.round((gi / grades.length) * 70);
-      setProgress(pct, `Đang tải dữ liệu Khối ${grade}...`);
-      log(`⬇️  Đang tải Khối ${grade}...`);
+      setProgress(Math.round((gi / grades.length) * 40), `Phase 1 – Tải Khối ${grade}...`);
+      log(`⬇️  Tải bulk Khối ${grade}...`);
 
-      let gradeData;
       try {
-        gradeData = await fetchGradeDoc(periodId, grade);
+        const gradeData = await fetchGradeDoc(periodId, grade);
+        if (!gradeData) {
+          log(`ℹ️  Khối ${grade}: Không có doc bulk.`, "log-warn");
+          gradeCache[grade] = null;
+        } else {
+          gradeCache[grade] = gradeData;
+          log(`✅ Khối ${grade}: ${gradeData.studentRows.length} học sinh.`, "log-ok");
+
+          // Filter SBDs from this grade doc
+          let foundInGrade = 0;
+          for (const sbd of sbdList) {
+            if (matched.has(sbd)) continue; // already found
+            const row = findSBDInRows(gradeData.studentRows, gradeData.headerRow, sbd);
+            if (row) {
+              records.push({ sbd, grade, periodId, headerRow: gradeData.headerRow, row });
+              matched.add(sbd);
+              foundInGrade++;
+            }
+          }
+          log(`   → ${foundInGrade} SBD tìm thấy trong Khối ${grade}.`);
+        }
       } catch (e) {
         if (e?.code === "resource-exhausted") {
-          log(`⚠️  Khối ${grade}: Firestore hết quota – thử lại sau.`, "log-warn");
+          quotaHit = true;
+          log(`⚠️  Khối ${grade}: Firestore hết quota.`, "log-warn");
         } else {
           log(`❌ Khối ${grade}: ${e?.message || e}`, "log-err");
         }
-        continue;
       }
-
-      if (!gradeData) {
-        log(`ℹ️  Khối ${grade}: Không có dữ liệu cho kỳ này.`, "log-warn");
-        continue;
-      }
-
-      log(`✅ Khối ${grade}: ${gradeData.studentRows.length} học sinh trong file.`, "log-ok");
-
-      for (const sbd of sbdList) {
-        const row = findSBDInRows(gradeData.studentRows, gradeData.headerRow, sbd);
-        if (row) {
-          records.push({ sbd, grade, periodId, headerRow: gradeData.headerRow, row });
-          matched.add(sbd);
-        }
-      }
-      log(`   Tìm thấy ${[...matched].filter(s => records.some(r=>r.sbd===s&&r.grade===grade)).length} SBD trong Khối ${grade}.`);
-      await sleep(300); // gentle rate limit
+      await sleep(300);
     }
 
-    setProgress(80, "Đang tạo file Excel...");
-    log("📊 Đang tạo file Excel...", "log-info");
+    // ══════════════════════════════════════════
+    // PHASE 2: Fetch từng SBD còn thiếu qua student_scores
+    // ══════════════════════════════════════════
+    const stillMissing = sbdList.filter(s => !matched.has(s));
+
+    if (stillMissing.length > 0) {
+      log("", "");
+      log(`── PHASE 2: Fetch riêng lẻ ${stillMissing.length} SBD còn thiếu ──`, "log-info");
+
+      const BATCH = 8; // 8 requests song song
+      let done = 0;
+
+      for (let i = 0; i < stillMissing.length; i += BATCH) {
+        const chunk = stillMissing.slice(i, i + BATCH);
+        const pct = 40 + Math.round((done / stillMissing.length) * 45);
+        setProgress(pct, `Phase 2 – ${done}/${stillMissing.length} SBD...`);
+
+        const results = await Promise.allSettled(
+          chunk.map(sbd => fetchStudentScore(periodId, sbd))
+        );
+
+        for (let j = 0; j < chunk.length; j++) {
+          const sbd = chunk[j];
+          const res = results[j];
+          if (res.status === "fulfilled" && res.value) {
+            const d = res.value;
+            records.push({
+              sbd,
+              grade: d.grade,
+              periodId,
+              headerRow: d.headerRow,
+              row: d.studentRow,
+            });
+            matched.add(sbd);
+            log(`  ✅ ${sbd} → Khối ${d.grade} (student_scores)`, "log-ok");
+          } else if (res.status === "rejected") {
+            const code = res.reason?.code;
+            if (code === "resource-exhausted") {
+              quotaHit = true;
+              log(`  ⚠️  ${sbd}: quota hết.`, "log-warn");
+            } else {
+              log(`  ✗  ${sbd}: ${res.reason?.message || "không tìm thấy"}`, "");
+            }
+          }
+          // fulfilled + null = không có doc = SBD không tồn tại trong kỳ này
+        }
+
+        done += chunk.length;
+        await sleep(250);
+      }
+
+      const foundPhase2 = stillMissing.filter(s => matched.has(s)).length;
+      log(`   → Phase 2 tìm thêm ${foundPhase2} SBD.`, foundPhase2 > 0 ? "log-ok" : "");
+    }
+
+    // ══════════════════════════════════════════
+    // PHASE 3: Tạo Excel
+    // ══════════════════════════════════════════
+    setProgress(88, "Đang tạo file Excel...");
+    log("", "");
+    log("── PHASE 3: Tạo file Excel ──", "log-info");
+
+    if (records.length === 0) {
+      log("⚠️  Không có dữ liệu nào để xuất.", "log-warn");
+    }
 
     const xlsxArr = buildXLSX(records, sbdList, matched);
-    _xlsxBlob = new Blob([xlsxArr], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    _xlsxBlob = new Blob([xlsxArr], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    });
 
     setProgress(100, "Hoàn thành!");
-    log(`🎉 Hoàn thành! ${matched.size}/${sbdList.length} SBD tìm thấy.`, "log-ok");
+    log(`🎉 Hoàn thành! ${matched.size}/${sbdList.length} SBD tìm thấy – ${records.length} dòng.`, "log-ok");
+    if (quotaHit) log("⚠️  Một số request bị quota – kết quả có thể chưa đầy đủ. Thử lại sau.", "log-warn");
 
-    // Show result
+    // Update stats
     const missing = sbdList.filter(s => !matched.has(s));
     document.getElementById("statTotal").textContent   = sbdList.length;
     document.getElementById("statFound").textContent   = matched.size;
@@ -910,7 +1018,7 @@ window.startFetch = async function() {
     }
 
   } catch(e) {
-    log(`❌ Lỗi: ${e?.message || e}`, "log-err");
+    log(`❌ Lỗi nghiêm trọng: ${e?.message || e}`, "log-err");
     setProgress(0, "Lỗi – xem log bên dưới.");
   } finally {
     btn.disabled = false;
