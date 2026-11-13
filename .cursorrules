@@ -1,0 +1,14 @@
+# Cursor & AI Agent Rules for LQD Score Exporter
+# Full specification is maintained in GEMINI.md
+
+Please follow all 10 Golden Rules defined in GEMINI.md:
+1. SBD 12026218 MUST be permanently purged from all tables, sheets, calculations, ranks, and exports.
+2. Grade rankings (Hang Khoi) for Grade 10, 11, and 12 must be computed independently. Never combine all 3 grades into one ranking pool.
+3. Use Standard Competition Ranking (1, 2, 2, 4) for total score and combinations.
+4. Calculate 6 admission combinations (A00, A01, B00, C00, D01, D07) with both Class Rank and Grade Rank. Missing subjects = null/empty, never replace with 0.
+5. Column header matching must distinguish between 'Ngày sinh' and subject 'Sinh' (Biology). Do NOT use .includes('sinh') for birth dates.
+6. Summary table TB_mon_lop must have separate benchmark rows for 'TOÀN KHỐI 12', 'TOÀN KHỐI 11', 'TOÀN KHỐI 10' instead of a single merged school row.
+7. Excel workbooks must conform to the 37-column standard format, frozen header row, AutoFilter on student rows, and yellow TBM LOP summary rows.
+8. Web UI Hall of Fame must support 3 scopes (School, Grade 10/11/12, Class) with podium top 3 and cards top 4-10.
+9. Firestore calls must not add custom headers (to avoid CORS preflight failures). Bulk grade fetch should be prioritized.
+10. Ensure run_termux.sh and auto_crawl.yml are synchronized with changes.
