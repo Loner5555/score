@@ -3537,28 +3537,56 @@ function processRecords(records) {
     if (r.headerRow && r.headerRow.length) {
       r.headerRow.forEach((h, i) => {
         const lh = String(h || "").toLowerCase().trim();
-        if (lh.includes("tên") || lh.includes("họ và tên")) nameIdx = i;
-        else if (lh.includes("sinh") || lh.includes("ngày sinh")) dobIdx = i;
-        else if (lh.includes("sbd") || lh.includes("số báo danh")) sbdIdx = i;
-        else if (lh === "lớp" || lh === "lop") clsIdx = i;
-        else if (lh === "toán" || lh === "toan") toanIdx = i;
-        else if (lh === "văn" || lh === "van" || lh === "ngữ văn") vanIdx = i;
-        else if (lh === "anh" || lh === "tiếng anh") anhIdx = i;
-        else if (lh === "lý" || lh === "lí" || lh === "vật lý" || lh === "vật lí") lyIdx = i;
-        else if (lh === "hoá" || lh === "hóa") hoaIdx = i;
-        else if (lh === "sinh" || lh === "sinh học") sinhIdx = i;
-        else if (lh === "sử" || lh === "lịch sử") suIdx = i;
-        else if (lh === "địa" || lh === "địa lý" || lh === "địa lí") diaIdx = i;
-        else if (lh === "tổng điểm" || lh === "tong") tongIdx = i;
-        else if (lh === "tbm") tbmIdx = i;
+        if (lh.includes("họ và tên") || lh.includes("họ tên") || lh.includes("hoten") || lh === "tên" || lh === "ten") {
+          nameIdx = i;
+        } else if (lh.includes("ngày sinh") || lh.includes("ngaysinh") || lh.includes("ngày_sinh") || lh === "ns" || lh === "dob") {
+          dobIdx = i;
+        } else if (lh.includes("sbd") || lh.includes("số báo danh") || lh.includes("so bao danh") || lh === "số bd" || lh === "so bd") {
+          sbdIdx = i;
+        } else if (lh === "lớp" || lh === "lop" || lh === "class" || lh.startsWith("lớp") || lh.startsWith("lop")) {
+          clsIdx = i;
+        } else if (lh === "toán" || lh === "toan" || lh.startsWith("toán") || lh.startsWith("toan")) {
+          toanIdx = i;
+        } else if (lh === "văn" || lh === "van" || lh === "ngữ văn" || lh === "ngu van" || lh.includes("ngữ văn")) {
+          vanIdx = i;
+        } else if (lh === "anh" || lh === "tiếng anh" || lh === "tieng anh" || lh === "ngoại ngữ" || lh.includes("tiếng anh")) {
+          anhIdx = i;
+        } else if (lh === "lý" || lh === "lí" || lh === "vật lý" || lh === "vật lí" || lh === "vat ly" || lh === "vat li" || lh.includes("vật lý") || lh.includes("vật lí")) {
+          lyIdx = i;
+        } else if (lh === "hoá" || lh === "hóa" || lh === "hóa học" || lh === "hoá học" || lh === "hoa hoc" || lh.includes("hóa học") || lh.includes("hoá học")) {
+          hoaIdx = i;
+        } else if (lh === "sinh" || lh === "sinh học" || lh === "sinh hoc" || lh.includes("sinh học") || lh.includes("sinh hoc")) {
+          sinhIdx = i;
+        } else if (lh === "sử" || lh === "su" || lh === "lịch sử" || lh === "lich su" || lh.includes("lịch sử")) {
+          suIdx = i;
+        } else if (lh === "địa" || lh === "dia" || lh === "địa lý" || lh === "địa lí" || lh === "dia ly" || lh === "dia li" || lh.includes("địa lý") || lh.includes("địa lí")) {
+          diaIdx = i;
+        } else if (lh === "tổng điểm" || lh === "tong diem" || lh === "tổng" || lh === "tong" || lh.includes("tổng")) {
+          tongIdx = i;
+        } else if (lh === "tbm" || lh === "tb" || lh.includes("trung bình")) {
+          tbmIdx = i;
+        }
       });
     }
 
     const stt = row[0] || "";
-    const name = row[nameIdx] || "";
-    const dob = row[dobIdx] || "";
+    let name = String(row[nameIdx] || "").trim();
+    if (!name && typeof row[1] === "string" && /[a-zA-ZÀ-ỹ]/.test(row[1])) name = row[1].trim();
+
+    let dob = String(row[dobIdx] || "").trim();
+    // Bảo vệ tuyệt đối: Nếu ô dob chứa số thực (điểm thi) mà không phải ngày tháng dạng dd/mm/yyyy
+    if (dob && !dob.includes("/") && !dob.includes("-")) {
+      const dateCell = row.find(c => typeof c === "string" && (c.includes("/") || c.includes("-")) && /\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/.test(c.trim()));
+      if (dateCell) dob = dateCell.trim();
+      else if (!isNaN(parseFloat(dob))) dob = "";
+    }
+
     const sbd = normSBD(row[sbdIdx] || r.sbd);
     let cls = String(row[clsIdx] || "").trim();
+    if (!cls || !/^\d{1,2}[A-Za-z]/.test(cls)) {
+      const clsCell = row.find(c => typeof c === "string" && /^\d{1,2}[A-Za-z]\d*$/.test(c.trim()));
+      if (clsCell) cls = clsCell.trim();
+    }
     if (!cls) cls = `Khối ${r.grade || "12"}`;
 
     const toan = getF(row[toanIdx]);
