@@ -442,21 +442,140 @@ def build_workbook(records: list[dict[str, Any]], sbd_list: list[str], matched: 
             per_sheet[sheet_name] = [["Số báo danh"] + headers]
         per_sheet[sheet_name].append([rec["sbd"]] + rec["row"])
 
+    # Phân loại học sinh theo từng Lớp (12A1, 12A2, ... và 11A..., 10A...)
+    class_students: dict[str, list[dict[str, Any]]] = OrderedDict()
+    for rec in records:
+        if rec.get("sbd") == "12026218":
+            continue
+        c_name = ""
+        r = rec["row"]
+        h = rec["headers"]
+        # Tìm cột lớp
+        cls_idx = 4
+        for idx, col in enumerate(h):
+            if str(col or "").strip().lower() in ("lớp", "lop", "class"):
+                cls_idx = idx
+                break
+        if len(r) > cls_idx and r[cls_idx]:
+            c_name = str(r[cls_idx]).strip()
+        if not c_name:
+            c_name = f"Khối_{rec.get('grade', 'Chung')}"
+        if c_name not in class_students:
+            class_students[c_name] = []
+        class_students[c_name].append(rec)
+
+    # Tạo sheet cho từng lớp
+    classes_sorted = sorted(class_students.keys(), key=lambda c: (re.sub(r"\D", "", c) or "0", c))
+    tb_lop_rows = [["Lớp", "Sĩ số", "TB Toán", "TB Văn", "TB Anh", "TB Lý", "TB Hóa", "TB Sinh", "TB Sử", "TB Địa", "TBM bình quân"]]
+    all_subject_scores = {s: [] for s in ["toan", "van", "anh", "ly", "hoa", "sinh", "su", "dia", "tbm"]}
+
+    for c in classes_sorted:
+        c_recs = class_students[c]
+        if not c_recs:
+            continue
+        c_headers = ["Kỳ thi", "Khối", "SBD"] + [str(col or "").strip() for col in c_recs[0]["headers"]]
+        c_rows = [c_headers]
+
+        # Sắp xếp theo tổng điểm giảm dần nếu có
+        tong_idx = 13
+        for idx, col in enumerate(c_recs[0]["headers"]):
+            if "tổng" in str(col or "").lower():
+                tong_idx = idx
+                break
+
+        def get_tong(rec):
+            try:
+                return float(str(rec["row"][tong_idx]).replace(",", "."))
+            except Exception:
+                return -999.0
+
+        sorted_c_recs = sorted(c_recs, key=get_tong, reverse=True)
+
+        # Tính điểm trung bình môn cho lớp
+        subj_indices = {}
+        for idx, col in enumerate(c_recs[0]["headers"]):
+            cl = str(col or "").strip().lower()
+            if cl in ("toán", "toan"): subj_indices["toan"] = idx
+            elif cl in ("văn", "van", "ngữ văn"): subj_indices["van"] = idx
+            elif cl in ("anh", "tiếng anh"): subj_indices["anh"] = idx
+            elif cl in ("lý", "lí", "vật lý", "vật lí"): subj_indices["ly"] = idx
+            elif cl in ("hoá", "hóa", "hóa học"): subj_indices["hoa"] = idx
+            elif cl in ("sinh", "sinh học"): subj_indices["sinh"] = idx
+            elif cl in ("sử", "lịch sử"): subj_indices["su"] = idx
+            elif cl in ("địa", "địa lý", "địa lí"): subj_indices["dia"] = idx
+            elif cl in ("tbm", "tb"): subj_indices["tbm"] = idx
+
+        subj_totals = {s: [] for s in subj_indices}
+
+        for rec in sorted_c_recs:
+            row_data = [rec["period"], rec["grade"], rec["sbd"]] + rec["row"]
+            c_rows.append(row_data)
+            for s, i in subj_indices.items():
+                if len(rec["row"]) > i:
+                    try:
+                        v = float(str(rec["row"][i]).replace(",", "."))
+                        subj_totals[s].append(v)
+                        all_subject_scores[s].append(v)
+                    except Exception:
+                        pass
+
+        # Thêm hàng TBM LỚP ngay dưới danh sách học sinh
+        tbm_row = ["", "", "", "", "TBM LỚP"] + [""] * (len(c_headers) - 5)
+        for s, i in subj_indices.items():
+            col_pos = 3 + i # offset 3 cột đầu: Kỳ thi, Khối, SBD
+            if col_pos < len(tbm_row) and subj_totals[s]:
+                avg_v = round(sum(subj_totals[s]) / len(subj_totals[s]), 2)
+                tbm_row[col_pos] = avg_v
+
+        c_rows.append(tbm_row)
+        per_sheet[c] = c_rows
+
+        # Thêm dữ liệu vào bảng thống kê TB_mon_lop
+        def safe_avg(scores):
+            return round(sum(scores) / len(scores), 2) if scores else ""
+
+        tb_lop_rows.append([
+            c,
+            len(c_recs),
+            safe_avg(subj_totals.get("toan", [])),
+            safe_avg(subj_totals.get("van", [])),
+            safe_avg(subj_totals.get("anh", [])),
+            safe_avg(subj_totals.get("ly", [])),
+            safe_avg(subj_totals.get("hoa", [])),
+            safe_avg(subj_totals.get("sinh", [])),
+            safe_avg(subj_totals.get("su", [])),
+            safe_avg(subj_totals.get("dia", [])),
+            safe_avg(subj_totals.get("tbm", [])),
+        ])
+
+    # Hàng TOÀN KHỐI / TOÀN BỘ trong TB_mon_lop
+    def safe_all_avg(s):
+        return round(sum(all_subject_scores[s]) / len(all_subject_scores[s]), 2) if all_subject_scores.get(s) else ""
+
+    tb_lop_rows.append([
+        "TOÀN BỘ",
+        len([r for r in records if r.get("sbd") != "12026218"]),
+        safe_all_avg("toan"),
+        safe_all_avg("van"),
+        safe_all_avg("anh"),
+        safe_all_avg("ly"),
+        safe_all_avg("hoa"),
+        safe_all_avg("sinh"),
+        safe_all_avg("su"),
+        safe_all_avg("dia"),
+        safe_all_avg("tbm"),
+    ])
+
     # Put priority SBD first in the consolidated table; preserve input order otherwise.
     order = {s: i for i, s in enumerate(sbd_list)}
     header = summary_rows[0]
     body = sorted(summary_rows[1:], key=lambda r: order.get(norm_sbd(r[2 + find_sbd_index(union_headers)] if len(r) > 2 + find_sbd_index(union_headers) else ""), 10**9))
-    # The source SBD column may not be found in union headers; fallback to lookup by records.
-    summary_rows = [header] + body
+    summary_rows = [header] + [b for b in body if norm_sbd(b[2 + find_sbd_index(union_headers)] if len(b) > 2 + find_sbd_index(union_headers) else "") != "12026218"]
 
     status_rows = [["SBD", "Trạng thái"]]
-    status_rows += [[s, "Đã tìm thấy" if s in matched else "Chưa có trong file nguồn"] for s in sbd_list]
-    named = [("Tong_hop", summary_rows), ("Trang_thai_SBD", status_rows)]
+    status_rows += [[s, "Đã tìm thấy" if s in matched else "Chưa có trong file nguồn"] for s in sbd_list if s != "12026218"]
+    named = [("Tong_hop", summary_rows), ("TB_mon_lop", tb_lop_rows), ("Trang_thai_SBD", status_rows)]
     for name, rows in per_sheet.items():
-        if len(rows) > 2:
-            rows = [rows[0]] + sorted(
-                rows[1:], key=lambda r: order.get(norm_sbd(r[0]), 10**9)
-            )
         named.append((name, rows))
     write_xlsx(output, named)
 

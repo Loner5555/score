@@ -127,6 +127,77 @@
     footer { text-align: center; padding: 24px; font-size: .78rem; color: var(--muted); }
     .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,.4); border-top-color: white; border-radius: 50%; animation: spin .7s linear infinite; display: none; }
     @keyframes spin { to { transform: rotate(360deg); } }
+  
+    /* Chips nạp nhanh SBD */
+    .btn-chip {
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--text);
+      font-size: .78rem;
+      font-weight: 500;
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .btn-chip:hover {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+    }
+    .btn-chip.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+      box-shadow: 0 2px 4px rgba(29,78,216,.2);
+    }
+
+    /* Category tabs phân loại lớp */
+    .category-tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding: 6px 0 12px;
+      margin-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+      scrollbar-width: thin;
+    }
+    .cat-tab {
+      background: white;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: .82rem;
+      font-weight: 600;
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all .15s;
+    }
+    .cat-tab:hover {
+      background: #f1f5f9;
+      color: var(--text);
+    }
+    .cat-tab.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+      box-shadow: 0 2px 6px rgba(29, 78, 216, .25);
+    }
+    .tbm-row td {
+      background: #fef3c7 !important;
+      font-weight: 700 !important;
+      color: #1e3a8a !important;
+      border-top: 2px solid #cbd5e1 !important;
+      border-bottom: 2px solid #1e3a8a !important;
+    }
+    .rank-cell {
+      font-weight: 700;
+      border-radius: 4px;
+      padding: 2px 6px;
+    }
+    .rank-top1 { background: #fef08a; color: #854d0e; }
+    .rank-top3 { background: #e0f2fe; color: #0369a1; }
+
   </style>
 </head>
 <body>
@@ -159,90 +230,40 @@
         <option value="12" selected>Khối 12</option>
       </select>
     </div>
-    <div class="sbd-hint" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-top:10px; border-top:1px dashed var(--border); padding-top:10px;">
-      <div>
-        <span>Firebase DB: </span>
-        <code id="dbBadge" style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:.75rem; color:#0f172a;">ai-studio-hthngtracuimthig-...</code>
-      </div>
-      <button onclick="syncConfigFromWeb(true)" style="border:none; background:#eff6ff; color:var(--primary); font-size:.78rem; font-weight:600; padding:4px 10px; border-radius:6px; cursor:pointer;">
-        🔄 Tự động dò Database ID mới
-      </button>
-    </div>
-  </div>
-
-  <!-- SBD card -->
-  <div class="card">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-      <h2 style="margin-bottom:0">📋 Danh sách SBD</h2>
-      <label style="font-size:.8rem; color:var(--primary); cursor:pointer; font-weight:500; display:flex; align-items:center; gap:4px;">
-        📁 Nạp từ file .txt
-        <input type="file" accept=".txt" style="display:none" onchange="handleSBDFile(event)" />
-      </label>
-    </div>
-    <textarea id="txtSBD" placeholder="Dán danh sách SBD vào đây, mỗi số một dòng...&#10;Ví dụ:&#10;12026001&#10;12026016&#10;12026020"></textarea>
-    <div class="sbd-hint" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
+        <div class="sbd-hint" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
       <div>
         <span id="sbdCount">0 SBD</span> · Mỗi dòng một SBD 8 chữ số.
-        <button onclick="loadDefaultSBD()" style="border:none;background:none;color:var(--primary);cursor:pointer;font-size:.78rem;text-decoration:underline;padding:0;margin-left:6px">Dùng 451 SBD mặc định</button>
       </div>
       <button id="btnLoadCache" onclick="loadFromCache()" style="display:none; border:none; background:#dcfce7; color:#15803d; font-size:.78rem; font-weight:600; padding:3px 8px; border-radius:4px; cursor:pointer;">
         💾 Xem lại dữ liệu đã lưu
       </button>
     </div>
-  </div>
-
-  <!-- Action -->
-  <button id="btnFetch" onclick="startFetch()">
-    <div class="spinner" id="spinner"></div>
-    <span id="btnText">🚀 Lấy điểm Online &amp; Xuất Excel</span>
-  </button>
-
-  <!-- Offline fallback dropzone card -->
-  <div class="dropzone" id="dropArea" onclick="document.getElementById('fileOffline').click()" ondragover="event.preventDefault()" ondrop="handleFileDrop(event)">
-    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
-      <div>
-        <div style="font-size: .92rem; font-weight: 700; color: #1d4ed8; display:flex; align-items:center; gap:6px;">
-          📂 Chế độ Dự phòng khi Web Hết Quota (Offline)
-        </div>
-        <p style="font-size: .8rem; color: var(--muted); margin-top: 4px;">
-          Kéo thả hoặc tải lên file Excel (.xlsx, .csv, .json) từ máy tính để lọc 451 SBD ngay lập tức mà <strong>không cần mạng</strong>.
-        </p>
-      </div>
-      <label style="background: white; border: 1px solid #bfdbfe; padding: 8px 16px; border-radius: 8px; font-size: .82rem; font-weight: 600; cursor: pointer; color: var(--primary); box-shadow:0 1px 2px rgba(0,0,0,.05);" onclick="event.stopPropagation()">
-        Chọn file nguồn
-        <input type="file" id="fileOffline" accept=".xlsx,.xls,.csv,.json" style="display: none;" onchange="handleOfflineFile(event)" />
-      </label>
+    <!-- Quick buttons for 10, 11, 12, all -->
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; align-items:center;">
+      <span style="font-size:.78rem; font-weight:600; color:var(--muted);">Nạp nhanh SBD:</span>
+      <button type="button" id="chip_all" class="btn-chip active" onclick="loadGradeSBD('all')">🎯 Tất cả 3 khối (1.306 SBD)</button>
+      <button type="button" id="chip_12" class="btn-chip" onclick="loadGradeSBD('12')">🎓 Khối 12 (441 SBD)</button>
+      <button type="button" id="chip_11" class="btn-chip" onclick="loadGradeSBD('11')">📘 Khối 11 (425 SBD)</button>
+      <button type="button" id="chip_10" class="btn-chip" onclick="loadGradeSBD('10')">📗 Khối 10 (440 SBD)</button>
     </div>
   </div>
-
-  <!-- Progress -->
-  <div id="progressWrap" class="card" style="display:none">
-    <h2>⏳ Tiến độ</h2>
-    <div class="progress-bar-track"><div class="progress-bar-fill" id="progressFill"></div></div>
-    <div id="progressText">Đang khởi động...</div>
-    <div id="logBox"></div>
-  </div>
-
-  <!-- Result -->
-  <div class="card" id="resultCard" style="display:none">
-    <h2>✅ Kết quả</h2>
-    <div class="stat-grid">
-      <div class="stat"><div class="stat-value" id="statTotal">0</div><div class="stat-label">SBD yêu cầu</div></div>
-      <div class="stat"><div class="stat-value" id="statFound">0</div><div class="stat-label">Tìm thấy</div></div>
-      <div class="stat"><div class="stat-value" id="statMissing">0</div><div class="stat-label">Chưa có dữ liệu</div></div>
-      <div class="stat"><div class="stat-value" id="statRows">0</div><div class="stat-label">Dòng kết quả</div></div>
-    </div>
 
     <button id="btnDownload" onclick="downloadXLSX()" style="margin-bottom: 20px;">
       ⬇️ Tải xuống Bang_diem_loc_theo_SBD.xlsx
     </button>
 
-    <!-- Table preview -->
+        <!-- Table preview -->
     <div style="border-top: 1px solid var(--border); padding-top: 18px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
-        <h3 style="font-size: .9rem; font-weight: 700; color: var(--text);">👀 Xem trước bảng điểm trực tiếp</h3>
-        <input type="text" id="previewSearch" placeholder="🔍 Tìm SBD, Tên, Lớp..." oninput="filterPreviewTable()" style="padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: .82rem; width: 200px;" />
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+        <h3 style="font-size: .95rem; font-weight: 700; color: var(--text);">👀 Phân loại theo lớp &amp; Xem trước bảng điểm</h3>
+        <input type="text" id="previewSearch" placeholder="🔍 Tìm SBD, Tên, Lớp..." oninput="filterPreviewTable()" style="padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: .82rem; width: 220px;" />
       </div>
+
+      <!-- Category Tabs (12A1..12A10, 11A.., 10A.., TB_mon_lop, etc.) -->
+      <div id="categoryTabsWrap" style="overflow-x:auto; padding-bottom:4px; margin-bottom:12px;">
+        <div class="category-tabs" id="categoryTabs"></div>
+      </div>
+
       <div class="table-container">
         <table id="previewTable">
           <thead id="previewHead"></thead>
@@ -895,14 +916,193 @@ window.loadFromCache = function() {
   }
 };
 
-/* ── Hiển thị bảng xem trước (Live Preview Table) ── */
+/* ── Quản lý nạp nhanh SBD Khối 10, 11, 12, All ── */
+window.loadGradeSBD = function(grade) {
+  const sel = document.getElementById("selGrades");
+  if (grade === "all") {
+    document.getElementById("txtSBD").value = SBDS_ALL;
+    for (let opt of sel.options) opt.selected = true;
+  } else if (grade === "12") {
+    document.getElementById("txtSBD").value = SBDS_K12;
+    for (let opt of sel.options) opt.selected = (opt.value === "12");
+  } else if (grade === "11") {
+    document.getElementById("txtSBD").value = SBDS_K11;
+    for (let opt of sel.options) opt.selected = (opt.value === "11");
+  } else if (grade === "10") {
+    document.getElementById("txtSBD").value = SBDS_K10;
+    for (let opt of sel.options) opt.selected = (opt.value === "10");
+  }
+  updateCount();
+  document.querySelectorAll(".btn-chip").forEach(b => b.classList.remove("active"));
+  const activeBtn = document.getElementById(`chip_${grade}`);
+  if (activeBtn) activeBtn.classList.add("active");
+};
+
+/* ── Chuyển đổi dữ liệu và tính xếp hạng / tổ hợp ── */
+let _processedData = null;
+let _activeCategory = "all";
+
+function processRecords(records) {
+  const valid = records.filter(r => r.sbd !== "12026218");
+  const getF = (v) => {
+    if (v == null) return null;
+    const s = String(v).trim().replace(",", ".");
+    if (!s || s === "-") return null;
+    const f = parseFloat(s);
+    return isNaN(f) ? null : f;
+  };
+
+  const students = valid.map(r => {
+    const row = r.row || [];
+    let nameIdx = 1, dobIdx = 2, sbdIdx = 3, clsIdx = 4;
+    let toanIdx = 5, vanIdx = 6, anhIdx = 7, lyIdx = 8, hoaIdx = 9, sinhIdx = 10, suIdx = 11, diaIdx = 12;
+    let tongIdx = 13, tbmIdx = 15;
+
+    if (r.headerRow && r.headerRow.length) {
+      r.headerRow.forEach((h, i) => {
+        const lh = String(h || "").toLowerCase().trim();
+        if (lh.includes("tên") || lh.includes("họ và tên")) nameIdx = i;
+        else if (lh.includes("sinh") || lh.includes("ngày sinh")) dobIdx = i;
+        else if (lh.includes("sbd") || lh.includes("số báo danh")) sbdIdx = i;
+        else if (lh === "lớp" || lh === "lop") clsIdx = i;
+        else if (lh === "toán" || lh === "toan") toanIdx = i;
+        else if (lh === "văn" || lh === "van" || lh === "ngữ văn") vanIdx = i;
+        else if (lh === "anh" || lh === "tiếng anh") anhIdx = i;
+        else if (lh === "lý" || lh === "lí" || lh === "vật lý" || lh === "vật lí") lyIdx = i;
+        else if (lh === "hoá" || lh === "hóa") hoaIdx = i;
+        else if (lh === "sinh" || lh === "sinh học") sinhIdx = i;
+        else if (lh === "sử" || lh === "lịch sử") suIdx = i;
+        else if (lh === "địa" || lh === "địa lý" || lh === "địa lí") diaIdx = i;
+        else if (lh === "tổng điểm" || lh === "tong") tongIdx = i;
+        else if (lh === "tbm") tbmIdx = i;
+      });
+    }
+
+    const stt = row[0] || "";
+    const name = row[nameIdx] || "";
+    const dob = row[dobIdx] || "";
+    const sbd = normSBD(row[sbdIdx] || r.sbd);
+    let cls = String(row[clsIdx] || "").trim();
+    if (!cls) cls = `Khối ${r.grade || "12"}`;
+
+    const toan = getF(row[toanIdx]);
+    const van  = getF(row[vanIdx]);
+    const anh  = getF(row[anhIdx]);
+    const ly   = getF(row[lyIdx]);
+    const hoa  = getF(row[hoaIdx]);
+    const sinh = getF(row[sinhIdx]);
+    const su   = getF(row[suIdx]);
+    const dia  = getF(row[diaIdx]);
+
+    const validScores = [toan, van, anh, ly, hoa, sinh, su, dia].filter(v => v !== null);
+    const rawTong = getF(row[tongIdx]);
+    const rawTbm = getF(row[tbmIdx]);
+
+    const tong = rawTong !== null ? rawTong : (validScores.length ? Math.round(validScores.reduce((a,b)=>a+b, 0)*100)/100 : null);
+    const tbm = rawTbm !== null ? rawTbm : (validScores.length ? Math.round((validScores.reduce((a,b)=>a+b, 0)/validScores.length)*100)/100 : null);
+
+    const a00 = (toan !== null && ly !== null && hoa !== null) ? Math.round((toan + ly + hoa)*100)/100 : null;
+    const a01 = (toan !== null && ly !== null && anh !== null) ? Math.round((toan + ly + anh)*100)/100 : null;
+    const b00 = (toan !== null && hoa !== null && sinh !== null) ? Math.round((toan + hoa + sinh)*100)/100 : null;
+    const c00 = (van !== null && su !== null && dia !== null) ? Math.round((van + su + dia)*100)/100 : null;
+    const d01 = (toan !== null && van !== null && anh !== null) ? Math.round((toan + van + anh)*100)/100 : null;
+    const d07 = (toan !== null && hoa !== null && anh !== null) ? Math.round((toan + hoa + anh)*100)/100 : null;
+
+    return {
+      period: r.periodId,
+      grade: r.grade || (sbd.startsWith("10") ? "10" : (sbd.startsWith("11") ? "11" : "12")),
+      stt, name, dob, sbd, cls,
+      toan, van, anh, ly, hoa, sinh, su, dia,
+      tong, tbm,
+      a00, a01, b00, c00, d01, d07
+    };
+  });
+
+  // Thứ hạng cạnh tranh 1, 2, 2, 4
+  function rankList(items, getter) {
+    const validItems = items.filter(s => getter(s) !== null);
+    validItems.sort((a, b) => getter(b) - getter(a));
+    const m = new Map();
+    let prevV = null, prevR = 0;
+    validItems.forEach((s, idx) => {
+      const v = getter(s);
+      if (v === prevV) {
+        m.set(s.sbd, prevR);
+      } else {
+        const r = idx + 1;
+        m.set(s.sbd, r);
+        prevR = r;
+        prevV = v;
+      }
+    });
+    return m;
+  }
+
+  // Toàn khối ranks
+  const rKTong = rankList(students, s => s.tong);
+  const rKA00  = rankList(students, s => s.a00);
+  const rKA01  = rankList(students, s => s.a01);
+  const rKB00  = rankList(students, s => s.b00);
+  const rKC00  = rankList(students, s => s.c00);
+  const rKD01  = rankList(students, s => s.d01);
+  const rKD07  = rankList(students, s => s.d07);
+
+  // Group by class
+  const classMap = new Map();
+  students.forEach(s => {
+    if (!classMap.has(s.cls)) classMap.set(s.cls, []);
+    classMap.get(s.cls).push(s);
+  });
+
+  const rLTong = new Map(), rLA00 = new Map(), rLA01 = new Map(), rLB00 = new Map(), rLC00 = new Map(), rLD01 = new Map(), rLD07 = new Map();
+  classMap.forEach((cStudents) => {
+    const mTong = rankList(cStudents, s => s.tong);
+    const mA00  = rankList(cStudents, s => s.a00);
+    const mA01  = rankList(cStudents, s => s.a01);
+    const mB00  = rankList(cStudents, s => s.b00);
+    const mC00  = rankList(cStudents, s => s.c00);
+    const mD01  = rankList(cStudents, s => s.d01);
+    const mD07  = rankList(cStudents, s => s.d07);
+
+    mTong.forEach((v, k) => rLTong.set(k, v));
+    mA00.forEach((v, k) => rLA00.set(k, v));
+    mA01.forEach((v, k) => rLA01.set(k, v));
+    mB00.forEach((v, k) => rLB00.set(k, v));
+    mC00.forEach((v, k) => rLC00.set(k, v));
+    mD01.forEach((v, k) => rLD01.set(k, v));
+    mD07.forEach((v, k) => rLD07.set(k, v));
+  });
+
+  students.forEach(s => {
+    s.h_tong_lop  = rLTong.get(s.sbd) ?? "";
+    s.h_tong_khoi = rKTong.get(s.sbd) ?? "";
+    s.h_a00_lop   = rLA00.get(s.sbd) ?? "";
+    s.h_a00_khoi  = rKA00.get(s.sbd) ?? "";
+    s.h_a01_lop   = rLA01.get(s.sbd) ?? "";
+    s.h_a01_khoi  = rKA01.get(s.sbd) ?? "";
+    s.h_b00_lop   = rLB00.get(s.sbd) ?? "";
+    s.h_b00_khoi  = rKB00.get(s.sbd) ?? "";
+    s.h_c00_lop   = rLC00.get(s.sbd) ?? "";
+    s.h_c00_khoi  = rKC00.get(s.sbd) ?? "";
+    s.h_d01_lop   = rLD01.get(s.sbd) ?? "";
+    s.h_d01_khoi  = rKD01.get(s.sbd) ?? "";
+    s.h_d07_lop   = rLD07.get(s.sbd) ?? "";
+    s.h_d07_khoi  = rKD07.get(s.sbd) ?? "";
+  });
+
+  return { students, classMap };
+}
+
+/* ── Hiển thị bảng xem trước (Live Preview Table) với Category Tabs ── */
 function renderStatsAndTable(records, sbdList, matched) {
-  _currentRecords = records;
-  const missing = sbdList.filter(s => !matched.has(s));
-  document.getElementById("statTotal").textContent   = sbdList.length;
-  document.getElementById("statFound").textContent   = matched.size;
+  _currentRecords = records.filter(r => r.sbd !== "12026218");
+  _processedData = processRecords(_currentRecords);
+
+  const missing = sbdList.filter(s => !matched.has(s) && s !== "12026218");
+  document.getElementById("statTotal").textContent   = sbdList.filter(s => s !== "12026218").length;
+  document.getElementById("statFound").textContent   = matched.size - (matched.has("12026218") ? 1 : 0);
   document.getElementById("statMissing").textContent = missing.length;
-  document.getElementById("statRows").textContent    = records.length;
+  document.getElementById("statRows").textContent    = _currentRecords.length;
   document.getElementById("resultCard").style.display = "block";
 
   if (missing.length > 0) {
@@ -913,20 +1113,86 @@ function renderStatsAndTable(records, sbdList, matched) {
     document.getElementById("missingSection").style.display = "none";
   }
 
-  // Render Table
-  renderPreviewTable(records);
+  // Khởi tạo các Category Tabs
+  renderCategoryTabs();
+  switchCategoryTab("all");
 }
 
-function renderPreviewTable(records) {
+function renderCategoryTabs() {
+  const tabsWrap = document.getElementById("categoryTabs");
+  tabsWrap.innerHTML = "";
+  if (!_processedData) return;
+
+  const { students, classMap } = _processedData;
+  const classes = Array.from(classMap.keys()).sort((a, b) => {
+    const na = parseInt(a.replace(/\D/g, "") || "0", 10);
+    const nb = parseInt(b.replace(/\D/g, "") || "0", 10);
+    return na !== nb ? na - nb : a.localeCompare(b);
+  });
+
+  const tabDefs = [
+    { key: "all", label: `Toàn bộ (${students.length})` }
+  ];
+
+  classes.forEach(c => {
+    tabDefs.push({ key: c, label: `${c} (${classMap.get(c).length})` });
+  });
+
+  tabDefs.push({ key: "tb_mon_lop", label: "📊 Thống kê TBM Lớp" });
+
+  tabDefs.forEach(t => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `cat-tab ${t.key === _activeCategory ? "active" : ""}`;
+    btn.textContent = t.label;
+    btn.onclick = () => switchCategoryTab(t.key);
+    tabsWrap.appendChild(btn);
+  });
+}
+
+function switchCategoryTab(catKey) {
+  _activeCategory = catKey;
+  document.querySelectorAll(".cat-tab").forEach(b => {
+    b.classList.toggle("active", b.textContent.startsWith(catKey) || (catKey === "all" && b.textContent.startsWith("Toàn bộ")) || (catKey === "tb_mon_lop" && b.textContent.includes("Thống kê")));
+  });
+
+  if (catKey === "tb_mon_lop") {
+    renderTBMTable();
+  } else {
+    renderStudentTable(catKey);
+  }
+}
+
+function renderStudentTable(catKey) {
   const head = document.getElementById("previewHead");
   const body = document.getElementById("previewBody");
   head.innerHTML = "";
   body.innerHTML = "";
-  if (!records || records.length === 0) return;
+  if (!_processedData) return;
 
-  // Header columns
-  const first = records[0];
-  const cols = ["SBD", "Khối", ...(first.headerRow || [])];
+  let list = _processedData.students;
+  if (catKey !== "all") {
+    list = _processedData.classMap.get(catKey) || [];
+  }
+
+  // Lọc theo search input nếu có
+  const q = document.getElementById("previewSearch").value.toLowerCase().trim();
+  if (q) {
+    list = list.filter(s => s.sbd.includes(q) || s.name.toLowerCase().includes(q) || s.cls.toLowerCase().includes(q));
+  }
+
+  // Sắp xếp tổng điểm giảm dần
+  const sorted = [...list].sort((a, b) => (b.tong ?? -999) - (a.tong ?? -999));
+
+  // Headers (37 cột chuẩn)
+  const cols = [
+    "Kỳ thi", "Khối", "STT", "Họ và tên", "Ngày sinh", "SBD", "Lớp",
+    "Toán", "Văn", "Anh", "Lý", "Hoá", "Sinh", "Sử", "Địa",
+    "Tổng", "Hạng Lớp", "Hạng Khối", "TBM",
+    "A00", "A01", "B00", "C00", "D01", "D07",
+    "Hạng A00", "Hạng A01", "Hạng B00", "Hạng C00", "Hạng D01", "Hạng D07"
+  ];
+
   const trH = document.createElement("tr");
   cols.forEach(c => {
     const th = document.createElement("th");
@@ -935,33 +1201,149 @@ function renderPreviewTable(records) {
   });
   head.appendChild(trH);
 
-  // Rows (hiển thị tối đa 200 dòng đầu để mượt mà)
-  records.slice(0, 200).forEach(r => {
+  // Render rows
+  sorted.forEach(s => {
     const tr = document.createElement("tr");
-    const tdSBD = document.createElement("td");
-    tdSBD.innerHTML = `<strong>${r.sbd}</strong>`;
-    tr.appendChild(tdSBD);
+    const fmt = (v) => v != null ? (typeof v === "number" ? v.toFixed(2).replace(/\.00$/, "") : v) : "";
+    
+    const rowVals = [
+      s.period, s.grade, s.stt, s.name, s.dob, s.sbd, s.cls,
+      fmt(s.toan), fmt(s.van), fmt(s.anh), fmt(s.ly), fmt(s.hoa), fmt(s.sinh), fmt(s.su), fmt(s.dia),
+      fmt(s.tong), s.h_tong_lop, s.h_tong_khoi, fmt(s.tbm),
+      fmt(s.a00), fmt(s.a01), fmt(s.b00), fmt(s.c00), fmt(s.d01), fmt(s.d07),
+      s.h_a00_lop, s.h_a01_lop, s.h_b00_lop, s.h_c00_lop, s.h_d01_lop, s.h_d07_lop
+    ];
 
-    const tdGrade = document.createElement("td");
-    tdGrade.textContent = r.grade || "";
-    tr.appendChild(tdGrade);
-
-    (r.row || []).forEach(val => {
+    rowVals.forEach((val, idx) => {
       const td = document.createElement("td");
-      td.textContent = val ?? "";
+      td.textContent = val;
+      if (idx === 3) td.style.textAlign = "left"; // Họ tên căn trái
+      else td.style.textAlign = "center";
+      
+      // Highlight thứ hạng top 1 và top 3
+      if ((idx === 16 || idx === 17) && (val === 1 || val === "1")) {
+        td.innerHTML = `<span class="rank-cell rank-top1">🥇 1</span>`;
+      } else if ((idx === 16 || idx === 17) && (val === 2 || val === 3 || val === "2" || val === "3")) {
+        td.innerHTML = `<span class="rank-cell rank-top3">${val}</span>`;
+      }
       tr.appendChild(td);
     });
     body.appendChild(tr);
   });
+
+  // Hàng TBM LỚP (nếu xem tab lớp hoặc xem toàn bộ)
+  if (sorted.length > 0) {
+    const trTBM = document.createElement("tr");
+    trTBM.className = "tbm-row";
+
+    const calcAvg = (getter) => {
+      const validVals = sorted.map(getter).filter(v => v !== null && !isNaN(v));
+      return validVals.length ? (validVals.reduce((a,b)=>a+b, 0)/validVals.length).toFixed(2) : "";
+    };
+
+    const tbmVals = [
+      "", "", "", "TBM LỚP", "", "", catKey !== "all" ? catKey : "Toàn khối",
+      calcAvg(s => s.toan), calcAvg(s => s.van), calcAvg(s => s.anh),
+      calcAvg(s => s.ly), calcAvg(s => s.hoa), calcAvg(s => s.sinh),
+      calcAvg(s => s.su), calcAvg(s => s.dia),
+      "", "", "", calcAvg(s => s.tbm),
+      calcAvg(s => s.a00), calcAvg(s => s.a01), calcAvg(s => s.b00),
+      calcAvg(s => s.c00), calcAvg(s => s.d01), calcAvg(s => s.d07),
+      "", "", "", "", "", ""
+    ];
+
+    tbmVals.forEach(val => {
+      const td = document.createElement("td");
+      td.textContent = val;
+      td.style.textAlign = "center";
+      trTBM.appendChild(td);
+    });
+    body.appendChild(trTBM);
+  }
+}
+
+function renderTBMTable() {
+  const head = document.getElementById("previewHead");
+  const body = document.getElementById("previewBody");
+  head.innerHTML = "";
+  body.innerHTML = "";
+  if (!_processedData) return;
+
+  const { students, classMap } = _processedData;
+  const classes = Array.from(classMap.keys()).sort((a, b) => {
+    const na = parseInt(a.replace(/\D/g, "") || "0", 10);
+    const nb = parseInt(b.replace(/\D/g, "") || "0", 10);
+    return na !== nb ? na - nb : a.localeCompare(b);
+  });
+
+  const headers = ["Lớp", "Sĩ số", "TB Toán", "TB Văn", "TB Anh", "TB Lý", "TB Hóa", "TB Sinh", "TB Sử", "TB Địa", "TBM bình quân"];
+  const trH = document.createElement("tr");
+  headers.forEach(h => {
+    const th = document.createElement("th");
+    th.textContent = h;
+    trH.appendChild(th);
+  });
+  head.appendChild(trH);
+
+  const calcSubjAvg = (list, getter) => {
+    const valid = list.map(getter).filter(v => v !== null && !isNaN(v));
+    return valid.length ? (valid.reduce((a,b)=>a+b, 0) / valid.length).toFixed(2) : "";
+  };
+
+  classes.forEach(c => {
+    const cStudents = classMap.get(c) || [];
+    const tr = document.createElement("tr");
+    const rowVals = [
+      c,
+      cStudents.length,
+      calcSubjAvg(cStudents, s => s.toan),
+      calcSubjAvg(cStudents, s => s.van),
+      calcSubjAvg(cStudents, s => s.anh),
+      calcSubjAvg(cStudents, s => s.ly),
+      calcSubjAvg(cStudents, s => s.hoa),
+      calcSubjAvg(cStudents, s => s.sinh),
+      calcSubjAvg(cStudents, s => s.su),
+      calcSubjAvg(cStudents, s => s.dia),
+      calcSubjAvg(cStudents, s => s.tbm),
+    ];
+    rowVals.forEach((v, idx) => {
+      const td = document.createElement("td");
+      td.textContent = v;
+      td.style.textAlign = "center";
+      if (idx === 0) td.style.fontWeight = "700";
+      tr.appendChild(td);
+    });
+    body.appendChild(tr);
+  });
+
+  // Hàng TOÀN KHỐI
+  const trTotal = document.createElement("tr");
+  trTotal.className = "tbm-row";
+  const totalVals = [
+    "TOÀN BỘ",
+    students.length,
+    calcSubjAvg(students, s => s.toan),
+    calcSubjAvg(students, s => s.van),
+    calcSubjAvg(students, s => s.anh),
+    calcSubjAvg(students, s => s.ly),
+    calcSubjAvg(students, s => s.hoa),
+    calcSubjAvg(students, s => s.sinh),
+    calcSubjAvg(students, s => s.su),
+    calcSubjAvg(students, s => s.dia),
+    calcSubjAvg(students, s => s.tbm),
+  ];
+  totalVals.forEach(v => {
+    const td = document.createElement("td");
+    td.textContent = v;
+    td.style.textAlign = "center";
+    trTotal.appendChild(td);
+  });
+  body.appendChild(trTotal);
 }
 
 window.filterPreviewTable = function() {
-  const q = document.getElementById("previewSearch").value.toLowerCase().trim();
-  const filtered = _currentRecords.filter(r => {
-    if (r.sbd.toLowerCase().includes(q)) return true;
-    return (r.row || []).some(v => String(v ?? "").toLowerCase().includes(q));
-  });
-  renderPreviewTable(filtered);
+  if (_activeCategory === "tb_mon_lop") renderTBMTable();
+  else renderStudentTable(_activeCategory);
 };
 
 /* ── CHẾ ĐỘ OFFLINE: KÉO THẢ HOẶC CHỌN FILE EXCEL / JSON ── */
@@ -1197,52 +1579,130 @@ async function batchRun(items, batchSize, fn, onDone) {
   return results;
 }
 
-/* ── XLSX builder ── */
+/* ── XLSX builder chuẩn chuyên nghiệp: Đầy đủ Sheet Toan_khoi, từng lớp 12A1..12A10, TB_mon_lop ── */
 function buildXLSX(records, sbdList, matched) {
   if (typeof XLSX === "undefined") throw new Error("SheetJS chưa tải xong.");
   const wb = XLSX.utils.book_new();
 
-  // Sheet 1: Summary
-  if (records.length > 0) {
-    // Build union headers
-    const unionSet = [];
-    for (const r of records) {
-      for (const h of r.headerRow) {
-        const lbl = String(h || "").trim() || `Cột${unionSet.length+1}`;
-        if (!unionSet.includes(lbl)) unionSet.push(lbl);
-      }
-    }
-    if (unionSet.length === 0) unionSet.push("SBD", "Họ và tên", "Dữ liệu");
+  const data = processRecords(records);
+  const students = data.students;
+  const classMap = data.classMap;
 
-    const aoa = [["Kỳ thi", "Khối", ...unionSet]];
-    for (const r of records) {
-      const hdrs = r.headerRow.map(h => String(h || "").trim());
-      const mapped = {};
-      hdrs.forEach((h, i) => { if (h) mapped[h] = r.row[i] ?? ""; });
-      aoa.push([r.periodId, r.grade, ...unionSet.map(h => mapped[h] ?? "")]);
-    }
-    const ws1 = XLSX.utils.aoa_to_sheet(aoa);
-    XLSX.utils.book_append_sheet(wb, ws1, "Tong_hop");
+  const COL_HEADERS = [
+    "Kỳ thi", "Khối", "STT", "Họ và tên", "Ngày sinh", "SBD", "Lớp",
+    "Toán", "Văn", "Anh", "Lý", "Hoá", "Sinh", "Sử", "Địa",
+    "Tổng điểm", "Hạng tổng lớp", "Hạng tổng khối", "TBM",
+    "A00", "A01", "B00", "C00", "D01", "D07",
+    "Hạng A00 lớp", "Hạng A00 khối",
+    "Hạng A01 lớp", "Hạng A01 khối",
+    "Hạng B00 lớp", "Hạng B00 khối",
+    "Hạng C00 lớp", "Hạng C00 khối",
+    "Hạng D01 lớp", "Hạng D01 khối",
+    "Hạng D07 lớp", "Hạng D07 khối"
+  ];
+
+  function studentToRow(s) {
+    return [
+      s.period, s.grade, s.stt, s.name, s.dob, s.sbd, s.cls,
+      s.toan ?? "", s.van ?? "", s.anh ?? "", s.ly ?? "", s.hoa ?? "", s.sinh ?? "", s.su ?? "", s.dia ?? "",
+      s.tong ?? "", s.h_tong_lop ?? "", s.h_tong_khoi ?? "", s.tbm ?? "",
+      s.a00 ?? "", s.a01 ?? "", s.b00 ?? "", s.c00 ?? "", s.d01 ?? "", s.d07 ?? "",
+      s.h_a00_lop ?? "", s.h_a00_khoi ?? "",
+      s.h_a01_lop ?? "", s.h_a01_khoi ?? "",
+      s.h_b00_lop ?? "", s.h_b00_khoi ?? "",
+      s.h_c00_lop ?? "", s.h_c00_khoi ?? "",
+      s.h_d01_lop ?? "", s.h_d01_khoi ?? "",
+      s.h_d07_lop ?? "", s.h_d07_khoi ?? ""
+    ];
   }
 
-  // Sheet 2: Status
+  // 1. Sheet Tổng hợp Toàn Khối
+  const allRows = [COL_HEADERS];
+  const sortedAll = [...students].sort((a,b) => (b.tong ?? -999) - (a.tong ?? -999));
+  sortedAll.forEach(s => allRows.push(studentToRow(s)));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(allRows), "Toan_khoi");
+
+  // 2. Sheet riêng cho từng Lớp (12A1..12A10, 11A.., 10A..)
+  const classes = Array.from(classMap.keys()).sort((a, b) => {
+    const na = parseInt(a.replace(/\D/g, "") || "0", 10);
+    const nb = parseInt(b.replace(/\D/g, "") || "0", 10);
+    return na !== nb ? na - nb : a.localeCompare(b);
+  });
+
+  const tbRows = [
+    ["Lớp", "Sĩ số", "TB Toán", "TB Văn", "TB Anh", "TB Lý", "TB Hóa", "TB Sinh", "TB Sử", "TB Địa", "TBM bình quân"]
+  ];
+
+  const calcSubjAvg = (list, getter) => {
+    const valid = list.map(getter).filter(v => v !== null && !isNaN(v));
+    return valid.length ? parseFloat((valid.reduce((a,b)=>a+b, 0) / valid.length).toFixed(2)) : "";
+  };
+
+  classes.forEach(c => {
+    const cStudents = classMap.get(c) || [];
+    const sortedC = [...cStudents].sort((a,b) => (b.tong ?? -999) - (a.tong ?? -999));
+    const cRows = [COL_HEADERS];
+
+    sortedC.forEach(s => cRows.push(studentToRow(s)));
+
+    // Thêm hàng TBM LỚP ngay dưới danh sách học sinh
+    const tbmRow = [
+      "", "", "", "TBM LỚP", "", "", c,
+      calcSubjAvg(sortedC, s => s.toan), calcSubjAvg(sortedC, s => s.van), calcSubjAvg(sortedC, s => s.anh),
+      calcSubjAvg(sortedC, s => s.ly), calcSubjAvg(sortedC, s => s.hoa), calcSubjAvg(sortedC, s => s.sinh),
+      calcSubjAvg(sortedC, s => s.su), calcSubjAvg(sortedC, s => s.dia),
+      "", "", "", calcSubjAvg(sortedC, s => s.tbm),
+      calcSubjAvg(sortedC, s => s.a00), calcSubjAvg(sortedC, s => s.a01), calcSubjAvg(sortedC, s => s.b00),
+      calcSubjAvg(sortedC, s => s.c00), calcSubjAvg(sortedC, s => s.d01), calcSubjAvg(sortedC, s => s.d07),
+      "", "", "", "", "", ""
+    ];
+    cRows.push(tbmRow);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cRows), c.slice(0, 31));
+
+    // Dữ liệu cho sheet TB_mon_lop
+    tbRows.push([
+      c,
+      cStudents.length,
+      calcSubjAvg(cStudents, s => s.toan),
+      calcSubjAvg(cStudents, s => s.van),
+      calcSubjAvg(cStudents, s => s.anh),
+      calcSubjAvg(cStudents, s => s.ly),
+      calcSubjAvg(cStudents, s => s.hoa),
+      calcSubjAvg(cStudents, s => s.sinh),
+      calcSubjAvg(cStudents, s => s.su),
+      calcSubjAvg(cStudents, s => s.dia),
+      calcSubjAvg(cStudents, s => s.tbm),
+    ]);
+  });
+
+  // Hàng TOÀN BỘ trong TB_mon_lop
+  tbRows.push([
+    "TOÀN BỘ",
+    students.length,
+    calcSubjAvg(students, s => s.toan),
+    calcSubjAvg(students, s => s.van),
+    calcSubjAvg(students, s => s.anh),
+    calcSubjAvg(students, s => s.ly),
+    calcSubjAvg(students, s => s.hoa),
+    calcSubjAvg(students, s => s.sinh),
+    calcSubjAvg(students, s => s.su),
+    calcSubjAvg(students, s => s.dia),
+    calcSubjAvg(students, s => s.tbm),
+  ]);
+
+  // 3. Sheet Thống kê TB_mon_lop
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(tbRows), "TB_mon_lop");
+
+  // 4. Sheet Trạng thái SBD
   const statusAoa = [["SBD", "Trạng thái"]];
-  for (const s of sbdList) statusAoa.push([s, matched.has(s) ? "Đã tìm thấy" : "Chưa có trong file nguồn"]);
+  const missing = sbdList.filter(s => s !== "12026218");
+  for (const s of missing) {
+    statusAoa.push([s, matched.has(s) ? "Đã tìm thấy" : "Chưa có trong file nguồn"]);
+  }
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(statusAoa), "Trang_thai_SBD");
 
-  // Per-grade sheets
-  const perGrade = {};
-  for (const r of records) {
-    const key = r.grade ? `Khoi_${r.grade}` : r.periodId;
-    if (!perGrade[key]) perGrade[key] = { header: ["SBD", ...r.headerRow], rows: [] };
-    perGrade[key].rows.push([r.sbd, ...r.row]);
-  }
-  for (const [name, data] of Object.entries(perGrade)) {
-    const aoa = [data.header, ...data.rows];
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), name.slice(0,31));
-  }
-
   return XLSX.write(wb, { bookType: "xlsx", type: "array" });
+});
 }
 
 /* ── Timer đếm ngược đến lúc reset quota (07:00 sáng VN = 00:00 UTC) ── */
