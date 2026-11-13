@@ -4162,29 +4162,39 @@ function renderTBMTable() {
     body.appendChild(tr);
   });
 
-  // Hàng TOÀN KHỐI
-  const trTotal = document.createElement("tr");
-  trTotal.className = "tbm-row";
-  const totalVals = [
-    "TOÀN BỘ",
-    students.length,
-    calcSubjAvg(students, s => s.toan),
-    calcSubjAvg(students, s => s.van),
-    calcSubjAvg(students, s => s.anh),
-    calcSubjAvg(students, s => s.ly),
-    calcSubjAvg(students, s => s.hoa),
-    calcSubjAvg(students, s => s.sinh),
-    calcSubjAvg(students, s => s.su),
-    calcSubjAvg(students, s => s.dia),
-    calcSubjAvg(students, s => s.tbm),
-  ];
-  totalVals.forEach(v => {
-    const td = document.createElement("td");
-    td.textContent = v;
-    td.style.textAlign = "center";
-    trTotal.appendChild(td);
+  // Tách thành các dòng TBM riêng biệt cho từng khối (TOÀN KHỐI 12, TOÀN KHỐI 11, TOÀN KHỐI 10)
+  const gradeList = ["12", "11", "10"];
+  gradeList.forEach(g => {
+    const gStudents = students.filter(s => s.grade === g);
+    if (!gStudents.length) return;
+
+    const trGrade = document.createElement("tr");
+    trGrade.className = "tbm-row";
+    const gVals = [
+      `TOÀN KHỐI ${g}`,
+      gStudents.length,
+      calcSubjAvg(gStudents, s => s.toan),
+      calcSubjAvg(gStudents, s => s.van),
+      calcSubjAvg(gStudents, s => s.anh),
+      calcSubjAvg(gStudents, s => s.ly),
+      calcSubjAvg(gStudents, s => s.hoa),
+      calcSubjAvg(gStudents, s => s.sinh),
+      calcSubjAvg(gStudents, s => s.su),
+      calcSubjAvg(gStudents, s => s.dia),
+      calcSubjAvg(gStudents, s => s.tbm),
+    ];
+    gVals.forEach((v, idx) => {
+      const td = document.createElement("td");
+      td.textContent = v;
+      td.style.textAlign = "center";
+      td.style.fontWeight = "700";
+      if (idx === 0) {
+        td.style.color = "#92400e";
+      }
+      trGrade.appendChild(td);
+    });
+    body.appendChild(trGrade);
   });
-  body.appendChild(trTotal);
 }
 
 window.filterPreviewTable = function() {
@@ -4521,20 +4531,24 @@ function buildXLSX(records, sbdList, matched) {
     ]);
   });
 
-  // Hàng TOÀN BỘ trong TB_mon_lop
-  tbRows.push([
-    "TOÀN BỘ",
-    students.length,
-    calcSubjAvg(students, s => s.toan),
-    calcSubjAvg(students, s => s.van),
-    calcSubjAvg(students, s => s.anh),
-    calcSubjAvg(students, s => s.ly),
-    calcSubjAvg(students, s => s.hoa),
-    calcSubjAvg(students, s => s.sinh),
-    calcSubjAvg(students, s => s.su),
-    calcSubjAvg(students, s => s.dia),
-    calcSubjAvg(students, s => s.tbm),
-  ]);
+  // Tách thành các dòng TBM của từng khối (TOÀN KHỐI 12, TOÀN KHỐI 11, TOÀN KHỐI 10)
+  ["12", "11", "10"].forEach(g => {
+    const gStudents = students.filter(s => s.grade === g);
+    if (!gStudents.length) return;
+    tbRows.push([
+      `TOÀN KHỐI ${g}`,
+      gStudents.length,
+      calcSubjAvg(gStudents, s => s.toan),
+      calcSubjAvg(gStudents, s => s.van),
+      calcSubjAvg(gStudents, s => s.anh),
+      calcSubjAvg(gStudents, s => s.ly),
+      calcSubjAvg(gStudents, s => s.hoa),
+      calcSubjAvg(gStudents, s => s.sinh),
+      calcSubjAvg(gStudents, s => s.su),
+      calcSubjAvg(gStudents, s => s.dia),
+      calcSubjAvg(gStudents, s => s.tbm),
+    ]);
+  });
 
   // 3. Sheet Thống kê TB_mon_lop
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(tbRows), "TB_mon_lop");

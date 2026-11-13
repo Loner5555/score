@@ -548,23 +548,50 @@ def build_workbook(records: list[dict[str, Any]], sbd_list: list[str], matched: 
             safe_avg(subj_totals.get("tbm", [])),
         ])
 
-    # Hàng TOÀN KHỐI / TOÀN BỘ trong TB_mon_lop
-    def safe_all_avg(s):
-        return round(sum(all_subject_scores[s]) / len(all_subject_scores[s]), 2) if all_subject_scores.get(s) else ""
+    # Tách thành các dòng TBM cho từng khối (TOÀN KHỐI 12, TOÀN KHỐI 11, TOÀN KHỐI 10)
+    for g in ["12", "11", "10"]:
+        g_recs = [r for r in records if (str(r.get("grade") or "") == g or norm_sbd(r.get("sbd", "")).startswith(g)) and norm_sbd(r.get("sbd", "")) != "12026218"]
+        if not g_recs:
+            continue
+        g_scores = {s: [] for s in ["toan", "van", "anh", "ly", "hoa", "sinh", "su", "dia", "tbm"]}
+        for rec in g_recs:
+            h = rec.get("headers", [])
+            row = rec.get("row", [])
+            for idx, col in enumerate(h):
+                cl = str(col or "").strip().lower()
+                s_key = None
+                if cl in ("toán", "toan"): s_key = "toan"
+                elif cl in ("văn", "van", "ngữ văn"): s_key = "van"
+                elif cl in ("anh", "tiếng anh"): s_key = "anh"
+                elif cl in ("lý", "lí", "vật lý", "vật lí"): s_key = "ly"
+                elif cl in ("hoá", "hóa", "hóa học"): s_key = "hoa"
+                elif cl in ("sinh", "sinh học"): s_key = "sinh"
+                elif cl in ("sử", "lịch sử"): s_key = "su"
+                elif cl in ("địa", "địa lý", "địa lí"): s_key = "dia"
+                elif cl in ("tbm", "tb"): s_key = "tbm"
+                if s_key and len(row) > idx:
+                    try:
+                        g_scores[s_key].append(float(str(row[idx]).replace(",", ".")))
+                    except Exception:
+                        pass
 
-    tb_lop_rows.append([
-        "TOÀN BỘ",
-        len([r for r in records if r.get("sbd") != "12026218"]),
-        safe_all_avg("toan"),
-        safe_all_avg("van"),
-        safe_all_avg("anh"),
-        safe_all_avg("ly"),
-        safe_all_avg("hoa"),
-        safe_all_avg("sinh"),
-        safe_all_avg("su"),
-        safe_all_avg("dia"),
-        safe_all_avg("tbm"),
-    ])
+        def safe_g_avg(s):
+            scores = g_scores.get(s, [])
+            return round(sum(scores) / len(scores), 2) if scores else ""
+
+        tb_lop_rows.append([
+            f"TOÀN KHỐI {g}",
+            len(g_recs),
+            safe_g_avg("toan"),
+            safe_g_avg("van"),
+            safe_g_avg("anh"),
+            safe_g_avg("ly"),
+            safe_g_avg("hoa"),
+            safe_g_avg("sinh"),
+            safe_g_avg("su"),
+            safe_g_avg("dia"),
+            safe_g_avg("tbm"),
+        ])
 
     # Put priority SBD first in the consolidated table; preserve input order otherwise.
     order = {s: i for i, s in enumerate(sbd_list)}
