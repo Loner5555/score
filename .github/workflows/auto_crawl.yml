@@ -7,6 +7,12 @@ on:
     # 00:05 UTC = 07:05 sáng giờ Việt Nam (Lúc Firestore chính thức reset quota!)
     - cron: '5 0 * * *'
   workflow_dispatch: # Cho phép nhấn nút chạy thủ công bất kỳ lúc nào
+    inputs:
+      force:
+        description: 'Bỏ qua kiểm tra file đã có (chạy bắt buộc)'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -23,21 +29,44 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Chạy tool tự động lấy điểm
+      - name: Cài đặt thư viện xử lý Excel
+        run: |
+          pip install openpyxl
+
+      - name: Kiểm tra file đã tồn tại hôm nay chưa
+        id: check_file
+        run: |
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            echo "Force run enabled - will crawl regardless."
+            echo "skip=false" >> $GITHUB_OUTPUT
+          elif [ -f "Bang_diem_THPT_Le_Quy_Don_Khoi_12.xlsx" ] && [ -s "Bang_diem_THPT_Le_Quy_Don_Khoi_12.xlsx" ]; then
+            echo "File Bang_diem_THPT_Le_Quy_Don_Khoi_12.xlsx đã tồn tại và có dữ liệu -> Bỏ qua crawl để tiết kiệm quota!"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "Chưa có file -> Tiến hành crawl điểm."
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Chạy tool tự động lấy điểm (cả 3 khối)
+        if: steps.check_file.outputs.skip != 'true'
         run: |
           python auto_crawl.py GiuaHKI_2026_2027
 
       - name: Upload file Excel kết quả lên Artifacts
+        if: steps.check_file.outputs.skip != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: Bang_diem_tu_dong_LQD
-          path: Bang_diem_tu_dong.xlsx
+          path: |
+            Bang_diem_tu_dong.xlsx
+            Bang_diem_THPT_Le_Quy_Don_Khoi_12.xlsx
           if-no-files-found: ignore
 
       - name: Commit file Excel lên GitHub repo
+        if: steps.check_file.outputs.skip != 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f Bang_diem_tu_dong.xlsx || true
-          git commit -m "chore: auto update Bang_diem_tu_dong.xlsx [skip ci]" || echo "No changes"
+          git add -f Bang_diem_tu_dong.xlsx Bang_diem_THPT_Le_Quy_Don_Khoi_12.xlsx || true
+          git commit -m "chore: auto update Bang_diem Excel files [skip ci]" || echo "No changes"
           git push origin main || echo "Push failed"

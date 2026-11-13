@@ -6,3 +6,4 @@ download
 README.txt
 __pycache__/
 *.pyc
+raw_scores.xlsx

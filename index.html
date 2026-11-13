@@ -179,7 +179,7 @@
         <input type="file" accept=".txt" style="display:none" onchange="handleSBDFile(event)" />
       </label>
     </div>
-    <textarea id="txtSBD" placeholder="Dán danh sách SBD vào đây, mỗi số một dòng...&#10;Ví dụ:&#10;12026001&#10;12026016&#10;12026218"></textarea>
+    <textarea id="txtSBD" placeholder="Dán danh sách SBD vào đây, mỗi số một dòng...&#10;Ví dụ:&#10;12026001&#10;12026016&#10;12026020"></textarea>
     <div class="sbd-hint" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px;">
       <div>
         <span id="sbdCount">0 SBD</span> · Mỗi dòng một SBD 8 chữ số.
@@ -295,7 +295,10 @@ function updateFSBase() {
 /* Tự động dò và cập nhật Database ID mới nhất trực tiếp từ web trường */
 async function syncConfigFromWeb(showAlert = false) {
   try {
-    const res = await fetch("https://findlqd.vercel.app/");
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch("https://findlqd.vercel.app/", { signal: controller.signal });
+    clearTimeout(timeoutId);
     if (!res.ok) throw new Error("Không thể tải trang findlqd.vercel.app");
     const html = await res.text();
     const jsMatches = html.match(/\/assets\/index-[a-zA-Z0-9_-]+\.js/);
@@ -330,14 +333,10 @@ async function syncConfigFromWeb(showAlert = false) {
 
 /* Gọi Firestore REST – lấy 1 document */
 async function fsGetDoc(collection, docId) {
-  const url = `${FS_BASE}/${collection}/${encodeURIComponent(docId)}?key=${FB.apiKey}`;
-  const res = await fetch(url, {
-    headers: {
-      "Content-Type": "application/json",
-      /* Giả lập referrer của trang gốc để vượt HTTP referrer restriction */
-      "X-Referer": "https://findlqd.vercel.app/",
-    },
-  });
+  // Luôn build URL động từ FB để dùng databaseId mới nhất (không cache FS_BASE)
+  const base = `https://firestore.googleapis.com/v1/projects/${FB.projectId}/databases/${FB.databaseId}/documents`;
+  const url = `${base}/${collection}/${encodeURIComponent(docId)}?key=${FB.apiKey}`;
+  const res = await fetch(url);
   if (res.status === 404) return null;          // doc không tồn tại
   if (res.status === 429 || res.status === 503) {
     const e = new Error("resource-exhausted");
@@ -718,7 +717,6 @@ const DEFAULT_SBDS = `12026001
 12026178
 12026196
 12026210
-12026218
 12026259
 12026266
 12026268
@@ -1069,7 +1067,7 @@ function processOfflineFile(file) {
 
 /* ── Helpers ── */
 function parseSBDs(raw) {
-  return [...new Set(raw.match(/\d{8}/g) || [])];
+  return [...new Set(raw.match(/\d{8}/g) || [])].filter(s => s !== "12026218");
 }
 function normSBD(v) {
   if (v == null) return "";
@@ -1265,6 +1263,9 @@ updateQuotaCountdown();
 
 /* ── Main fetch ── */
 window.startFetch = async function() {
+  // Đồng bộ config mới nhất trước khi gọi API (tránh dùng databaseId cũ)
+  await syncConfigFromWeb(false);
+
   const rawSBD   = document.getElementById("txtSBD").value;
   const sbdList  = parseSBDs(rawSBD);
   const periodId = document.getElementById("selPeriod").value;
