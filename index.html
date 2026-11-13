@@ -198,6 +198,313 @@
     .rank-top1 { background: #fef08a; color: #854d0e; }
     .rank-top3 { background: #e0f2fe; color: #0369a1; }
 
+  
+    /* ══════════════════════════════════════════════════════════════
+       HIỆU ỨNG VINH DANH BẢNG VÀNG (HALL OF FAME & PODIUM)
+       ══════════════════════════════════════════════════════════════ */
+    .hof-card {
+      background: linear-gradient(135deg, #090d16 0%, #1e1b4b 50%, #0f172a 100%);
+      color: #f8fafc;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      border: 1px solid rgba(234, 179, 8, 0.35);
+      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.4), 0 0 15px rgba(234, 179, 8, 0.15);
+      position: relative;
+      overflow: hidden;
+    }
+    .hof-card::before {
+      content: "";
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle at center, rgba(234, 179, 8, 0.08) 0%, transparent 60%);
+      pointer-events: none;
+      animation: rotateBg 20s linear infinite;
+    }
+    @keyframes rotateBg {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .hof-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 16px;
+      position: relative;
+      z-index: 2;
+    }
+    .hof-crown-icon {
+      font-size: 2.2rem;
+      filter: drop-shadow(0 0 8px rgba(234, 179, 8, 0.6));
+      animation: bounceCrown 2s ease-in-out infinite;
+    }
+    @keyframes bounceCrown {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50% { transform: translateY(-5px) rotate(4deg); }
+    }
+    .hof-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: .5px;
+      background: linear-gradient(135deg, #fef08a 0%, #eab308 50%, #fef9c3 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 0;
+    }
+    .hof-sub {
+      font-size: .8rem;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+    .hof-filters {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .hof-tab-btn {
+      background: rgba(255, 255, 255, 0.07);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: #cbd5e1;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: .78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .hof-tab-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: white;
+      transform: translateY(-1px);
+    }
+    .hof-tab-btn.active {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: #0f172a;
+      font-weight: 700;
+      border-color: #fde047;
+      box-shadow: 0 4px 14px rgba(245, 158, 11, .4);
+    }
+
+    /* Podium 3 thứ hạng đầu */
+    .hof-podium {
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      gap: 16px;
+      margin: 28px 0 22px;
+      position: relative;
+      z-index: 2;
+      flex-wrap: wrap;
+    }
+    .podium-box {
+      flex: 1;
+      min-width: 170px;
+      max-width: 250px;
+      border-radius: 14px;
+      padding: 18px 14px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transition: all .3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      cursor: pointer;
+    }
+    .podium-box:hover {
+      transform: translateY(-6px) scale(1.02);
+    }
+
+    /* Hạng 1 (Thủ khoa) */
+    .podium-1 {
+      order: 2;
+      min-height: 250px;
+      background: linear-gradient(180deg, rgba(234, 179, 8, 0.25) 0%, rgba(15, 23, 42, 0.95) 100%);
+      border: 2px solid #facc15;
+      box-shadow: 0 0 25px rgba(250, 204, 21, 0.4), inset 0 0 15px rgba(250, 204, 21, 0.15);
+      animation: pulseGold 3s infinite ease-in-out;
+    }
+    @keyframes pulseGold {
+      0%, 100% { box-shadow: 0 0 20px rgba(250, 204, 21, 0.35); }
+      50% { box-shadow: 0 0 35px rgba(250, 204, 21, 0.65); }
+    }
+
+    /* Hạng 2 (Á khoa 1) */
+    .podium-2 {
+      order: 1;
+      min-height: 220px;
+      background: linear-gradient(180deg, rgba(226, 232, 240, 0.2) 0%, rgba(15, 23, 42, 0.95) 100%);
+      border: 2px solid #cbd5e1;
+      box-shadow: 0 0 16px rgba(203, 213, 225, 0.25);
+    }
+
+    /* Hạng 3 (Á khoa 2) */
+    .podium-3 {
+      order: 3;
+      min-height: 205px;
+      background: linear-gradient(180deg, rgba(249, 115, 22, 0.2) 0%, rgba(15, 23, 42, 0.95) 100%);
+      border: 2px solid #fb923c;
+      box-shadow: 0 0 16px rgba(249, 115, 22, 0.25);
+    }
+
+    .podium-medal {
+      font-size: 2.2rem;
+      margin-bottom: 6px;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,.5));
+    }
+    .podium-rank-tag {
+      font-size: .72rem;
+      font-weight: 800;
+      padding: 2px 10px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+      margin-bottom: 8px;
+    }
+    .tag-1 { background: #fef08a; color: #854d0e; }
+    .tag-2 { background: #e2e8f0; color: #334155; }
+    .tag-3 { background: #fed7aa; color: #9a3412; }
+
+    .podium-name {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #ffffff;
+      margin: 4px 0 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+    .podium-meta {
+      font-size: .78rem;
+      color: #94a3b8;
+      margin-bottom: 10px;
+    }
+    .podium-score {
+      font-size: 1.7rem;
+      font-weight: 900;
+      color: #facc15;
+      text-shadow: 0 2px 8px rgba(0,0,0,.6);
+      line-height: 1;
+    }
+    .podium-score-sub {
+      font-size: .72rem;
+      color: #cbd5e1;
+      margin-top: 4px;
+    }
+    .podium-combos {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 8px;
+    }
+    .combo-badge {
+      font-size: .68rem;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 4px;
+      padding: 2px 6px;
+      color: #e2e8f0;
+    }
+
+    /* Danh sách Top 4 - 10 */
+    .hof-ranks-wrap {
+      position: relative;
+      z-index: 2;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding-top: 16px;
+    }
+    .hof-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 8px;
+    }
+    .hof-item {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 9px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: all .2s;
+      cursor: pointer;
+    }
+    .hof-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(234, 179, 8, 0.4);
+      transform: translateX(3px);
+    }
+    .hof-item-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .hof-item-rank {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.12);
+      color: #f8fafc;
+      font-weight: 800;
+      font-size: .78rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .hof-item-name {
+      font-weight: 700;
+      font-size: .88rem;
+      color: #f8fafc;
+    }
+    .hof-item-meta {
+      font-size: .74rem;
+      color: #94a3b8;
+    }
+    .hof-item-right {
+      text-align: right;
+    }
+    .hof-item-score {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #facc15;
+    }
+    .hof-item-tbm {
+      font-size: .72rem;
+      color: #cbd5e1;
+    }
+
+    /* Badges trong bảng dữ liệu */
+    .badge-top-khoi {
+      background: #fef08a;
+      color: #854d0e;
+      font-size: .68rem;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+      display: inline-block;
+      border: 1px solid #fde047;
+    }
+    .badge-top-truong {
+      background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+      color: white;
+      font-size: .68rem;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+      display: inline-block;
+      box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    }
+
   </style>
 </head>
 <body>
@@ -317,6 +624,41 @@
     <button id="btnDownload" onclick="downloadXLSX()" style="margin-bottom: 20px;">
       ⬇️ Tải xuống Bang_diem_loc_theo_SBD.xlsx
     </button>
+
+    <!-- Hall of Fame Card (Bảng Vàng Vinh Danh) -->
+    <div id="hallOfFameCard" class="hof-card" style="display:none">
+      <div class="hof-header">
+        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+          <span class="hof-crown-icon">👑</span>
+          <div>
+            <h2 class="hof-title">BẢNG VÀNG VINH DANH THỦ KHOA &amp; TOP 10</h2>
+            <div class="hof-sub" id="hofSubtitle">Tuyên dương các thí sinh có thành tích xuất sắc nhất</div>
+          </div>
+        </div>
+        <div class="hof-filters">
+          <button type="button" class="hof-tab-btn active" id="hofBtn_truong" onclick="switchHofScope('truong')">🌟 Toàn trường</button>
+          <button type="button" class="hof-tab-btn" id="hofBtn_k12" onclick="switchHofScope('k12')">🎓 Khối 12</button>
+          <button type="button" class="hof-tab-btn" id="hofBtn_k11" onclick="switchHofScope('k11')">📘 Khối 11</button>
+          <button type="button" class="hof-tab-btn" id="hofBtn_k10" onclick="switchHofScope('k10')">📗 Khối 10</button>
+          <div style="display:inline-flex; align-items:center; gap:6px;">
+            <button type="button" class="hof-tab-btn" id="hofBtn_lop" onclick="switchHofScope('lop')">🏫 Top Lớp</button>
+            <select id="hofClassSelect" onchange="switchHofClass(this.value)" style="display:none; padding:5px 8px; border-radius:6px; font-size:.78rem; background:#1e293b; color:#f8fafc; border:1px solid #475569; cursor:pointer;">
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top 3 Podium (Bục Vinh Quang) -->
+      <div class="hof-podium" id="hofPodium"></div>
+
+      <!-- Top 4 - 10 Grid -->
+      <div class="hof-ranks-wrap" id="hofRanksWrap">
+        <div style="font-size:.82rem; font-weight:700; color:#94a3b8; margin-bottom:10px; text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px;">
+          <span>🎖️ Top 4 – 10 Thí sinh xuất sắc</span>
+        </div>
+        <div class="hof-grid" id="hofGrid"></div>
+      </div>
+    </div>
 
     <!-- Table preview -->
     <div style="border-top: 1px solid var(--border); padding-top: 18px;">
@@ -3272,14 +3614,41 @@ function processRecords(records) {
     return m;
   }
 
-  // Toàn khối ranks
-  const rKTong = rankList(students, s => s.tong);
-  const rKA00  = rankList(students, s => s.a00);
-  const rKA01  = rankList(students, s => s.a01);
-  const rKB00  = rankList(students, s => s.b00);
-  const rKC00  = rankList(students, s => s.c00);
-  const rKD01  = rankList(students, s => s.d01);
-  const rKD07  = rankList(students, s => s.d07);
+  // 1. Thứ hạng Toàn Trường (All Students Combined)
+  const rTTong = rankList(students, s => s.tong);
+
+  // 2. Thứ hạng Theo Từng Khối Lớp (Khối 10, 11, 12 tính riêng, không gộp lẫn nhau)
+  const gradeMap = new Map();
+  students.forEach(s => {
+    let g = String(s.grade || "");
+    if (!g) {
+      if (s.sbd.startsWith("10") || s.cls.startsWith("10")) g = "10";
+      else if (s.sbd.startsWith("11") || s.cls.startsWith("11")) g = "11";
+      else g = "12";
+    }
+    s.grade = g;
+    if (!gradeMap.has(g)) gradeMap.set(g, []);
+    gradeMap.get(g).push(s);
+  });
+
+  const rKTong = new Map(), rKA00 = new Map(), rKA01 = new Map(), rKB00 = new Map(), rKC00 = new Map(), rKD01 = new Map(), rKD07 = new Map();
+  gradeMap.forEach((gStudents) => {
+    const mKTong = rankList(gStudents, s => s.tong);
+    const mKA00  = rankList(gStudents, s => s.a00);
+    const mKA01  = rankList(gStudents, s => s.a01);
+    const mKB00  = rankList(gStudents, s => s.b00);
+    const mKC00  = rankList(gStudents, s => s.c00);
+    const mKD01  = rankList(gStudents, s => s.d01);
+    const mKD07  = rankList(gStudents, s => s.d07);
+
+    mKTong.forEach((v, k) => rKTong.set(k, v));
+    mKA00.forEach((v, k) => rKA00.set(k, v));
+    mKA01.forEach((v, k) => rKA01.set(k, v));
+    mKB00.forEach((v, k) => rKB00.set(k, v));
+    mKC00.forEach((v, k) => rKC00.set(k, v));
+    mKD01.forEach((v, k) => rKD01.set(k, v));
+    mKD07.forEach((v, k) => rKD07.set(k, v));
+  });
 
   // Group by class
   const classMap = new Map();
@@ -3308,6 +3677,7 @@ function processRecords(records) {
   });
 
   students.forEach(s => {
+    s.h_tong_truong = rTTong.get(s.sbd) ?? "";
     s.h_tong_lop  = rLTong.get(s.sbd) ?? "";
     s.h_tong_khoi = rKTong.get(s.sbd) ?? "";
     s.h_a00_lop   = rLA00.get(s.sbd) ?? "";
@@ -3324,10 +3694,191 @@ function processRecords(records) {
     s.h_d07_khoi  = rKD07.get(s.sbd) ?? "";
   });
 
-  return { students, classMap };
+  return { students, classMap, gradeMap };
 }
 
 /* ── Hiển thị bảng xem trước (Live Preview Table) với Category Tabs ── */
+
+/* ══════════════════════════════════════════════════════════════
+   LOGIC BẢNG VÀNG VINH DANH (HALL OF FAME)
+   ══════════════════════════════════════════════════════════════ */
+let _hofScope = "truong";
+let _hofClass = "";
+
+function switchHofScope(scope) {
+  _hofScope = scope;
+  document.querySelectorAll(".hof-tab-btn").forEach(b => b.classList.remove("active"));
+  const btn = document.getElementById(`hofBtn_${scope}`);
+  if (btn) btn.classList.add("active");
+
+  const clsSel = document.getElementById("hofClassSelect");
+  if (scope === "lop") {
+    clsSel.style.display = "inline-block";
+    if (!clsSel.value && clsSel.options.length > 0) {
+      clsSel.selectedIndex = 0;
+    }
+    _hofClass = clsSel.value || (_processedData ? Array.from(_processedData.classMap.keys())[0] : "");
+  } else {
+    clsSel.style.display = "none";
+  }
+
+  renderHallOfFame();
+}
+
+function switchHofClass(cls) {
+  _hofClass = cls;
+  switchHofScope("lop");
+}
+
+function renderHallOfFame() {
+  const card = document.getElementById("hallOfFameCard");
+  const podium = document.getElementById("hofPodium");
+  const grid = document.getElementById("hofGrid");
+  const sub = document.getElementById("hofSubtitle");
+  const ranksWrap = document.getElementById("hofRanksWrap");
+
+  if (!_processedData || !_processedData.students.length) {
+    if (card) card.style.display = "none";
+    return;
+  }
+  if (card) card.style.display = "block";
+
+  // Populate class select options if empty
+  const clsSel = document.getElementById("hofClassSelect");
+  if (clsSel && clsSel.options.length === 0) {
+    const classes = Array.from(_processedData.classMap.keys()).sort((a, b) => {
+      const na = parseInt(a.replace(/\D/g, "") || "0", 10);
+      const nb = parseInt(b.replace(/\D/g, "") || "0", 10);
+      return na !== nb ? na - nb : a.localeCompare(b);
+    });
+    classes.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c;
+      opt.textContent = `Lớp ${c}`;
+      clsSel.appendChild(opt);
+    });
+  }
+
+  let list = [];
+  let scopeTitle = "";
+
+  if (_hofScope === "truong") {
+    list = [..._processedData.students];
+    scopeTitle = "Bảng vàng vinh danh Top 10 thí sinh điểm cao nhất toàn trường";
+  } else if (_hofScope === "k12") {
+    list = _processedData.students.filter(s => s.grade === "12");
+    scopeTitle = "Bảng vàng vinh danh Top 10 thí sinh xuất sắc nhất Khối 12";
+  } else if (_hofScope === "k11") {
+    list = _processedData.students.filter(s => s.grade === "11");
+    scopeTitle = "Bảng vàng vinh danh Top 10 thí sinh xuất sắc nhất Khối 11";
+  } else if (_hofScope === "k10") {
+    list = _processedData.students.filter(s => s.grade === "10");
+    scopeTitle = "Bảng vàng vinh danh Top 10 thí sinh xuất sắc nhất Khối 10";
+  } else if (_hofScope === "lop") {
+    const c = _hofClass || (clsSel.value || Array.from(_processedData.classMap.keys())[0]);
+    if (c && clsSel) clsSel.value = c;
+    list = _processedData.classMap.get(c) || [];
+    scopeTitle = `Bảng vàng vinh danh Top 10 học sinh xuất sắc nhất Lớp ${c}`;
+  }
+
+  if (sub) sub.textContent = scopeTitle;
+
+  // Sắp xếp tổng điểm giảm dần
+  const sorted = [...list].filter(s => s.tong !== null).sort((a, b) => (b.tong ?? -999) - (a.tong ?? -999));
+
+  if (!sorted.length) {
+    if (podium) podium.innerHTML = "<div style='color:#94a3b8; font-size:.85rem; padding:20px;'>Chưa có đủ dữ liệu điểm cho nhóm này.</div>";
+    if (ranksWrap) ranksWrap.style.display = "none";
+    return;
+  }
+
+  // Top 3 for Podium
+  const top1 = sorted[0];
+  const top2 = sorted.length > 1 ? sorted[1] : null;
+  const top3 = sorted.length > 2 ? sorted[2] : null;
+
+  function getBestCombos(s) {
+    const combos = [
+      { name: "A00", v: s.a00 },
+      { name: "A01", v: s.a01 },
+      { name: "B00", v: s.b00 },
+      { name: "C00", v: s.c00 },
+      { name: "D01", v: s.d01 },
+      { name: "D07", v: s.d07 }
+    ].filter(c => c.v != null);
+    combos.sort((a, b) => b.v - a.v);
+    return combos.slice(0, 2);
+  }
+
+  function makePodiumBox(s, rankNum, tagClass, medal, rankTitle) {
+    if (!s) return "";
+    const bestCombos = getBestCombos(s).map(c => `<span class="combo-badge">${c.name}: ${c.v.toFixed(2)}</span>`).join("");
+    return `
+      <div class="podium-box podium-${rankNum}" onclick="focusStudentRow('${s.sbd}', '${s.cls}')" title="Nhấn để xem chi tiết học sinh trong bảng">
+        <div class="podium-medal">${medal}</div>
+        <div class="podium-rank-tag ${tagClass}">${rankTitle}</div>
+        <div class="podium-name" title="${s.name}">${s.name}</div>
+        <div class="podium-meta">Lớp: <strong style="color:#f8fafc">${s.cls}</strong> · SBD: <code>${s.sbd}</code></div>
+        <div class="podium-score">${s.tong != null ? s.tong.toFixed(2) : "-"}<span style="font-size:1rem; font-weight:600; color:#fef08a"> đ</span></div>
+        <div class="podium-score-sub">TBM: <strong>${s.tbm != null ? s.tbm.toFixed(2) : "-"}</strong></div>
+        <div class="podium-combos">${bestCombos}</div>
+      </div>
+    `;
+  }
+
+  let podiumHtml = "";
+  if (top2) podiumHtml += makePodiumBox(top2, 2, "tag-2", "🥈", "Á KHOA 1 · #2");
+  if (top1) podiumHtml += makePodiumBox(top1, 1, "tag-1", "👑 🥇", "THỦ KHOA · #1");
+  if (top3) podiumHtml += makePodiumBox(top3, 3, "tag-3", "🥉", "Á KHOA 2 · #3");
+  if (podium) podium.innerHTML = podiumHtml;
+
+  // Top 4 - 10
+  const top4_10 = sorted.slice(3, 10);
+  if (top4_10.length > 0) {
+    if (ranksWrap) ranksWrap.style.display = "block";
+    if (grid) {
+      grid.innerHTML = top4_10.map((s, idx) => {
+        const rank = idx + 4;
+        const best = getBestCombos(s)[0];
+        const comboTxt = best ? `<span class="combo-badge" style="margin-top:3px; display:inline-block">${best.name}: ${best.v.toFixed(2)}</span>` : "";
+        return `
+          <div class="hof-item" onclick="focusStudentRow('${s.sbd}', '${s.cls}')" title="Nhấn để xem chi tiết trong bảng">
+            <div class="hof-item-left">
+              <div class="hof-item-rank">#${rank}</div>
+              <div>
+                <div class="hof-item-name">${s.name}</div>
+                <div class="hof-item-meta">Lớp <strong>${s.cls}</strong> · SBD: ${s.sbd}</div>
+              </div>
+            </div>
+            <div class="hof-item-right">
+              <div class="hof-item-score">${s.tong != null ? s.tong.toFixed(2) : "-"} đ</div>
+              <div class="hof-item-tbm">TBM: ${s.tbm != null ? s.tbm.toFixed(2) : "-"}</div>
+              ${comboTxt}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+  } else {
+    if (ranksWrap) ranksWrap.style.display = "none";
+  }
+}
+
+function focusStudentRow(sbd, cls) {
+  if (_activeCategory !== "all" && _activeCategory !== cls) {
+    switchCategoryTab(cls);
+  }
+  const searchInput = document.getElementById("previewSearch");
+  if (searchInput) {
+    searchInput.value = sbd;
+    filterPreviewTable();
+  }
+  const tableWrap = document.querySelector(".table-container");
+  if (tableWrap) {
+    tableWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
 function renderStatsAndTable(records, sbdList, matched) {
   _currentRecords = records.filter(r => r.sbd !== "12026218");
   _processedData = processRecords(_currentRecords);
@@ -3347,7 +3898,8 @@ function renderStatsAndTable(records, sbdList, matched) {
     document.getElementById("missingSection").style.display = "none";
   }
 
-  // Khởi tạo các Category Tabs
+  // Khởi tạo Bảng Vàng Vinh Danh & Category Tabs
+  renderHallOfFame();
   renderCategoryTabs();
   switchCategoryTab("all");
 }
@@ -3386,6 +3938,12 @@ function renderCategoryTabs() {
 
 function switchCategoryTab(catKey) {
   _activeCategory = catKey;
+  if (catKey !== "all" && catKey !== "tb_mon_lop") {
+    _hofClass = catKey;
+    const clsSel = document.getElementById("hofClassSelect");
+    if (clsSel) clsSel.value = catKey;
+    if (_hofScope === "lop") renderHallOfFame();
+  }
   document.querySelectorAll(".cat-tab").forEach(b => {
     b.classList.toggle("active", b.textContent.startsWith(catKey) || (catKey === "all" && b.textContent.startsWith("Toàn bộ")) || (catKey === "tb_mon_lop" && b.textContent.includes("Thống kê")));
   });
@@ -3410,7 +3968,7 @@ function renderStudentTable(catKey) {
   }
 
   // Lọc theo search input nếu có
-  const q = document.getElementById("previewSearch").value.toLowerCase().trim();
+  const q = (document.getElementById("previewSearch")?.value || "").toLowerCase().trim();
   if (q) {
     list = list.filter(s => s.sbd.includes(q) || s.name.toLowerCase().includes(q) || s.cls.toLowerCase().includes(q));
   }
@@ -3418,13 +3976,18 @@ function renderStudentTable(catKey) {
   // Sắp xếp tổng điểm giảm dần
   const sorted = [...list].sort((a, b) => (b.tong ?? -999) - (a.tong ?? -999));
 
-  // Headers (37 cột chuẩn)
+  // Headers (37 cột chuẩn đầy đủ Hạng Lớp và Hạng Khối cho từng tổ hợp)
   const cols = [
     "Kỳ thi", "Khối", "STT", "Họ và tên", "Ngày sinh", "SBD", "Lớp",
     "Toán", "Văn", "Anh", "Lý", "Hoá", "Sinh", "Sử", "Địa",
     "Tổng", "Hạng Lớp", "Hạng Khối", "TBM",
     "A00", "A01", "B00", "C00", "D01", "D07",
-    "Hạng A00", "Hạng A01", "Hạng B00", "Hạng C00", "Hạng D01", "Hạng D07"
+    "Hạng A00 Lớp", "Hạng A00 Khối",
+    "Hạng A01 Lớp", "Hạng A01 Khối",
+    "Hạng B00 Lớp", "Hạng B00 Khối",
+    "Hạng C00 Lớp", "Hạng C00 Khối",
+    "Hạng D01 Lớp", "Hạng D01 Khối",
+    "Hạng D07 Lớp", "Hạng D07 Khối"
   ];
 
   const trH = document.createElement("tr");
@@ -3445,20 +4008,41 @@ function renderStudentTable(catKey) {
       fmt(s.toan), fmt(s.van), fmt(s.anh), fmt(s.ly), fmt(s.hoa), fmt(s.sinh), fmt(s.su), fmt(s.dia),
       fmt(s.tong), s.h_tong_lop, s.h_tong_khoi, fmt(s.tbm),
       fmt(s.a00), fmt(s.a01), fmt(s.b00), fmt(s.c00), fmt(s.d01), fmt(s.d07),
-      s.h_a00_lop, s.h_a01_lop, s.h_b00_lop, s.h_c00_lop, s.h_d01_lop, s.h_d07_lop
+      s.h_a00_lop, s.h_a00_khoi,
+      s.h_a01_lop, s.h_a01_khoi,
+      s.h_b00_lop, s.h_b00_khoi,
+      s.h_c00_lop, s.h_c00_khoi,
+      s.h_d01_lop, s.h_d01_khoi,
+      s.h_d07_lop, s.h_d07_khoi
     ];
 
     rowVals.forEach((val, idx) => {
       const td = document.createElement("td");
       td.textContent = val;
-      if (idx === 3) td.style.textAlign = "left"; // Họ tên căn trái
-      else td.style.textAlign = "center";
-      
-      // Highlight thứ hạng top 1 và top 3
-      if ((idx === 16 || idx === 17) && (val === 1 || val === "1")) {
-        td.innerHTML = `<span class="rank-cell rank-top1">🥇 1</span>`;
-      } else if ((idx === 16 || idx === 17) && (val === 2 || val === 3 || val === "2" || val === "3")) {
-        td.innerHTML = `<span class="rank-cell rank-top3">${val}</span>`;
+
+      if (idx === 3) {
+        td.style.textAlign = "left"; // Họ tên căn trái
+        // Vinh danh Top 10 Toàn trường hoặc Top 10 Khối
+        if (s.h_tong_truong && Number(s.h_tong_truong) <= 10) {
+          td.innerHTML = `<strong>${s.name}</strong> <span class="badge-top-truong">🏆 Top ${s.h_tong_truong} Trường</span>`;
+        } else if (s.h_tong_khoi && Number(s.h_tong_khoi) <= 10) {
+          td.innerHTML = `<strong>${s.name}</strong> <span class="badge-top-khoi">🎖️ Top ${s.h_tong_khoi} K${s.grade}</span>`;
+        }
+      } else {
+        td.style.textAlign = "center";
+      }
+
+      // Highlight thứ hạng Hạng Lớp (col 16) và Hạng Khối (col 17)
+      if (idx === 16 || idx === 17) {
+        if (val === 1 || val === "1") {
+          td.innerHTML = `<span class="rank-cell rank-top1">🥇 1</span>`;
+        } else if (val === 2 || val === "2") {
+          td.innerHTML = `<span class="rank-cell rank-top3" style="background:#f1f5f9; color:#334155; font-weight:700">🥈 2</span>`;
+        } else if (val === 3 || val === "3") {
+          td.innerHTML = `<span class="rank-cell rank-top3" style="background:#fed7aa; color:#9a3412; font-weight:700">🥉 3</span>`;
+        } else if (val && Number(val) <= 10) {
+          td.innerHTML = `<span class="rank-cell rank-top3">⭐ ${val}</span>`;
+        }
       }
       tr.appendChild(td);
     });
@@ -3483,7 +4067,7 @@ function renderStudentTable(catKey) {
       "", "", "", calcAvg(s => s.tbm),
       calcAvg(s => s.a00), calcAvg(s => s.a01), calcAvg(s => s.b00),
       calcAvg(s => s.c00), calcAvg(s => s.d01), calcAvg(s => s.d07),
-      "", "", "", "", "", ""
+      "", "", "", "", "", "", "", "", "", "", "", ""
     ];
 
     tbmVals.forEach(val => {
@@ -3888,7 +4472,7 @@ function buildXLSX(records, sbdList, matched) {
       "", "", "", calcSubjAvg(sortedC, s => s.tbm),
       calcSubjAvg(sortedC, s => s.a00), calcSubjAvg(sortedC, s => s.a01), calcSubjAvg(sortedC, s => s.b00),
       calcSubjAvg(sortedC, s => s.c00), calcSubjAvg(sortedC, s => s.d01), calcSubjAvg(sortedC, s => s.d07),
-      "", "", "", "", "", ""
+      "", "", "", "", "", "", "", "", "", "", "", ""
     ];
     cRows.push(tbmRow);
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cRows), c.slice(0, 31));
