@@ -599,7 +599,7 @@
       <span id="btnText">🚀 Lấy điểm Online &amp; Xuất Excel</span>
     </button>
     <button id="btnServerBackup" type="button" onclick="loadFromServerBackup(false)" style="flex:1; min-width:240px;">
-      <span>⚡ Nạp Bản Sao Lưu Máy Chủ (0 Quota)</span>
+      <span id="btnServerBackupText">⚡ Nạp Bản Sao Lưu Máy Chủ (0 Quota)</span>
     </button>
   </div>
 
@@ -646,9 +646,10 @@
           <div style="font-size:1rem; font-weight:800; color:#1e40af; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
             <span>🛡️</span> SAO LƯU DỮ LIỆU ĐỂ PHÒNG NGỪA MÁY CHỦ HẾT QUOTA
             <span style="background:#2563eb; color:white; font-size:.7rem; font-weight:700; padding:2px 8px; border-radius:999px;">Khuyên dùng</span>
+            <span id="backupPeriodTag" style="background:#dbeafe; color:#1e40af; border:1px solid #93c5fd; font-size:.75rem; font-weight:700; padding:2px 8px; border-radius:6px;">Kỳ thi: Giữa Kì 1</span>
           </div>
           <p style="font-size:.84rem; color:#334155; margin:6px 0 12px 0; line-height:1.5;">
-            Bạn vừa quét thành công <strong id="backupCountBadge" style="color:#1d4ed8; font-size:.95rem;">0</strong> học sinh!
+            Bạn vừa quét thành công <strong id="backupCountBadge" style="color:#1d4ed8; font-size:.95rem;">0</strong> học sinh của kỳ <strong id="backupPeriodText" style="color:#1e40af;">Giữa Kì 1 (2026 - 2027)</strong>!
             Máy chủ trường THPT Lê Quý Đôn có hạn mức lượt đọc mỗi ngày (Quota). Bạn có muốn tạo bản sao lưu dữ liệu này để lần sau (hoặc khi máy chủ hết Quota) vẫn có thể xem lại ngay lập tức và chia sẻ cho bạn bè không?
           </p>
         </div>
@@ -656,10 +657,10 @@
       </div>
 
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
-        <button type="button" onclick="saveToLocalCachePrompt()" style="background:#2563eb; color:white; border:none; border-radius:8px; padding:9px 15px; font-size:.84rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px; transition:.15s;">
+        <button id="btnSaveCachePrompt" type="button" onclick="saveToLocalCachePrompt()" style="background:#2563eb; color:white; border:none; border-radius:8px; padding:9px 15px; font-size:.84rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px; transition:.15s;">
           💾 Lưu vào máy này (Local Cache)
         </button>
-        <button type="button" onclick="downloadBackupJSON()" style="background:#059669; color:white; border:none; border-radius:8px; padding:9px 15px; font-size:.84rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px; transition:.15s;">
+        <button id="btnDownloadBackupJSON" type="button" onclick="downloadBackupJSON()" style="background:#059669; color:white; border:none; border-radius:8px; padding:9px 15px; font-size:.84rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px; transition:.15s;">
           📥 Tải file sao lưu (.json)
         </button>
         <button type="button" onclick="showCloudSyncInstructions()" style="background:#475569; color:white; border:none; border-radius:8px; padding:9px 15px; font-size:.84rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px; transition:.15s;">
@@ -740,7 +741,7 @@
       ⏱️ Reset sau: <strong id="quotaCountdown">...</strong>
       <div style="margin-top: 10px; display:flex; gap:8px; flex-wrap:wrap;">
         <button type="button" onclick="loadFromServerBackup(false)" style="background:#059669; color:white; border:none; padding:8px 16px; border-radius:6px; font-size:.84rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(5,150,105,.25);">
-          ⚡ Chuyển sang Bản sao lưu Máy chủ (0 Quota) ngay lập tức
+          ⚡ Chuyển sang Bản sao lưu Máy chủ (<span id="quotaPeriodBtnLabel">Kỳ thi đang chọn</span>) ngay lập tức
         </button>
       </div>
     </div>
@@ -3514,12 +3515,56 @@ window.handleSBDFile = function(e) {
   reader.readAsText(file, "utf-8");
 };
 
+/* ── Định nghĩa Danh mục Kỳ thi THPT Lê Quý Đôn ── */
+const PERIOD_NAMES = {
+  "GiuaHKI_2026_2027": "Giữa Kì 1 (2026 - 2027)",
+  "CuoiHKI_2026_2027": "Cuối Kì 1 (2026 - 2027)",
+  "GiuaHKII_2026_2027": "Giữa Kì 2 (2026 - 2027)",
+  "CuoiHKII_2026_2027": "Cuối Kì 2 (2026 - 2027)",
+};
+
+function getPeriodName(periodId) {
+  return PERIOD_NAMES[periodId] || periodId || "Kỳ thi";
+}
+
+function updatePeriodDisplay() {
+  const periodSel = document.getElementById("selPeriod");
+  const periodId = periodSel ? periodSel.value : "GiuaHKI_2026_2027";
+  const periodName = getPeriodName(periodId);
+  
+  const serverBtnText = document.getElementById("btnServerBackupText");
+  if (serverBtnText) {
+    serverBtnText.textContent = `⚡ Nạp Sao Lưu Server (${periodName})`;
+  }
+  const quotaLabel = document.getElementById("quotaPeriodBtnLabel");
+  if (quotaLabel) {
+    quotaLabel.textContent = periodName;
+  }
+  checkCache(periodId);
+}
+
 /* ── Quản lý Sao Lưu & Phòng Ngừa Hết Quota (Backup Management) ── */
 window.promptBackup = function(records) {
   if (!records || records.length === 0) return;
+  const periodId = document.getElementById("selPeriod").value;
+  const periodName = getPeriodName(periodId);
+
   const countEl = document.getElementById("backupCountBadge");
   const cleanCount = records.filter(r => r.sbd !== "12026218").length;
   if (countEl) countEl.textContent = cleanCount;
+
+  const periodTag = document.getElementById("backupPeriodTag");
+  if (periodTag) periodTag.textContent = `Kỳ thi: ${periodName}`;
+
+  const periodText = document.getElementById("backupPeriodText");
+  if (periodText) periodText.textContent = periodName;
+
+  const btnSaveCache = document.getElementById("btnSaveCachePrompt");
+  if (btnSaveCache) btnSaveCache.innerHTML = `💾 Lưu vào máy này (${periodName})`;
+
+  const btnDlJson = document.getElementById("btnDownloadBackupJSON");
+  if (btnDlJson) btnDlJson.innerHTML = `📥 Tải file sao lưu (.json) - ${periodName}`;
+
   const card = document.getElementById("backupPromptCard");
   if (card) {
     card.style.display = "block";
@@ -3536,6 +3581,7 @@ window.dismissBackupPrompt = function() {
 
 window.saveToLocalCachePrompt = function() {
   const periodId = document.getElementById("selPeriod").value;
+  const periodName = getPeriodName(periodId);
   if (!_currentRecords || _currentRecords.length === 0) {
     return alert("Chưa có dữ liệu để lưu.");
   }
@@ -3546,12 +3592,13 @@ window.saveToLocalCachePrompt = function() {
     fb.style.background = "#dcfce7";
     fb.style.color = "#15803d";
     fb.style.border = "1px solid #86efac";
-    fb.innerHTML = `✅ Đã lưu thành công ${_currentRecords.length} học sinh vào bộ nhớ máy này! Lần sau truy cập web bạn có thể xem lại ngay mà không tốn Quota.`;
+    fb.innerHTML = `✅ Đã lưu thành công ${_currentRecords.length} học sinh kỳ <strong>${periodName}</strong> vào bộ nhớ máy này! Lần sau truy cập web bạn có thể xem lại ngay mà không tốn Quota.`;
   }
 };
 
 window.downloadBackupJSON = function() {
   const periodId = document.getElementById("selPeriod").value;
+  const periodName = getPeriodName(periodId);
   if (!_currentRecords || _currentRecords.length === 0) {
     return alert("Chưa có dữ liệu để tải về.");
   }
@@ -3559,13 +3606,15 @@ window.downloadBackupJSON = function() {
     sbd: r.sbd,
     grade: r.grade,
     periodId: r.periodId || periodId,
+    periodName: r.periodName || periodName,
     headerRow: r.headerRow || r.headers || [],
     row: r.row
   }));
+  const fileName = `lqd_backup_${periodId}.json`;
   const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cleanRecords, null, 2));
   const dlAnchor = document.createElement('a');
   dlAnchor.setAttribute("href", dataStr);
-  dlAnchor.setAttribute("download", `lqd_backup_${periodId}.json`);
+  dlAnchor.setAttribute("download", fileName);
   document.body.appendChild(dlAnchor);
   dlAnchor.click();
   dlAnchor.remove();
@@ -3576,60 +3625,107 @@ window.downloadBackupJSON = function() {
     fb.style.background = "#eff6ff";
     fb.style.color = "#1d4ed8";
     fb.style.border = "1px solid #bfdbfe";
-    fb.innerHTML = `📥 Đã tải file <strong>lqd_backup_${periodId}.json</strong> về máy! Bạn có thể gửi file này cho bạn bè hoặc kéo thả vào ô Offline bất kỳ lúc nào để xem điểm.`;
+    fb.innerHTML = `📥 Đã tải file <strong>${fileName}</strong> (Dữ liệu kỳ <strong>${periodName}</strong>) về máy! Bạn có thể gửi file này cho bạn bè hoặc kéo thả vào ô Offline bất kỳ lúc nào để xem điểm.`;
   }
 };
 
 window.showCloudSyncInstructions = function() {
   const periodId = document.getElementById("selPeriod").value;
+  const periodName = getPeriodName(periodId);
   const count = _currentRecords ? _currentRecords.length : 0;
   alert(
     `🌐 HƯỚNG DẪN ĐÓNG GÓP BẢN SAO LƯU LÊN MÁY CHỦ (0 QUOTA):\n\n` +
-    `1. Hiện tại máy chủ GitHub Pages đã có sẵn Bản sao lưu tự động cho ${count} học sinh.\n\n` +
+    `• Kỳ thi hiện tại: ${periodName} (${count} học sinh)\n\n` +
+    `1. Hiện tại máy chủ GitHub Pages đã có sẵn Bản sao lưu tự động backup_${periodId}.json.\n\n` +
     `2. Bạn có thể bấm "Tải file sao lưu (.json)" để nhận file lqd_backup_${periodId}.json.\n\n` +
-    `3. Gửi file này vào repository GitHub (Loner5555/score) hoặc kéo thả trực tiếp vào web trên bất kỳ máy nào để mở điểm ngay lập tức mà không cần mạng hay quota!`
+    `3. Khi sang các kỳ thi mới (Cuối Kì 1, Giữa Kì 2, Cuối Kì 2), chỉ cần gửi file sao lưu tương ứng vào kho lưu trữ GitHub (Loner5555/score), hệ thống sẽ phân tách độc lập từng kỳ thi mà không bao giờ bị lẫn lộn!`
   );
 };
 
 window.loadFromServerBackup = async function(isAutoFallback = false) {
   const periodId = document.getElementById("selPeriod").value;
+  const periodName = getPeriodName(periodId);
   const rawSBD = document.getElementById("txtSBD").value;
   let sbdList = parseSBDs(rawSBD);
 
-  // Danh sách các URL dự phòng từ CDN GitHub Pages và Raw Repo
-  const urlsToTry = [
+  // Danh sách các URL dự phòng theo đúng kỳ thi đang chọn
+  const exactUrls = [
     `./backup_${periodId}.json`,
+    `https://raw.githubusercontent.com/Loner5555/score/main/backup_${periodId}.json`
+  ];
+  const fallbackUrls = [
     `./backup_latest.json`,
-    `https://raw.githubusercontent.com/Loner5555/score/main/backup_${periodId}.json`,
     `https://raw.githubusercontent.com/Loner5555/score/main/backup_latest.json`
   ];
 
-  log(`⚡ Đang kết nối tới Bản sao lưu Máy chủ (0 Quota)...`, "log-info");
+  log(`⚡ Đang kết nối tới Bản sao lưu Máy chủ cho kỳ: ${periodName}...`, "log-info");
   document.getElementById("progressWrap").style.display = "flex";
-  setProgress(30, "Đang tải dữ liệu từ máy chủ dự phòng...");
+  setProgress(30, `Đang tải bản sao lưu kỳ ${periodName}...`);
 
   let rawJson = null;
-  let successUrl = "";
+  let matchedPeriod = periodId;
 
-  for (const url of urlsToTry) {
+  // 1. Thử tải file sao lưu chính xác của kỳ thi này
+  for (const url of exactUrls) {
     try {
       const resp = await fetch(url, { cache: "no-cache" });
       if (resp.ok) {
         rawJson = await resp.json();
-        successUrl = url;
         break;
       }
     } catch(e) {}
   }
 
+  // 2. Nếu file riêng chưa có, thử kiểm tra file backup_latest.json
+  if (!rawJson || !Array.isArray(rawJson) || rawJson.length === 0) {
+    for (const url of fallbackUrls) {
+      try {
+        const resp = await fetch(url, { cache: "no-cache" });
+        if (resp.ok) {
+          const testJson = await resp.json();
+          if (Array.isArray(testJson) && testJson.length > 0) {
+            const filePeriod = testJson[0]?.periodId || "GiuaHKI_2026_2027";
+            if (filePeriod === periodId) {
+              rawJson = testJson;
+              break;
+            } else {
+              // Bản sao lưu latest là của KỲ KHÁC! Phân biệt rõ ràng, không được nạp nhầm!
+              const filePeriodName = getPeriodName(filePeriod);
+              log(`ℹ️ Bản sao lưu trên máy chủ hiện tại là của kỳ: ${filePeriodName}, không phải ${periodName}.`, "log-warn");
+              const userWantsSwitch = confirm(
+                `⚠️ PHÂN BIỆT KỲ THI BẢN SAO LƯU:\n\n` +
+                `• Bạn đang chọn tra cứu: [${periodName}]\n` +
+                `• Nhưng trên máy chủ hiện mới có bản sao lưu của: [${filePeriodName}]\n\n` +
+                `Bạn có muốn chuyển sang xem bảng điểm của [${filePeriodName}] không?`
+              );
+              if (userWantsSwitch) {
+                document.getElementById("selPeriod").value = filePeriod;
+                updatePeriodDisplay();
+                rawJson = testJson;
+                matchedPeriod = filePeriod;
+                break;
+              } else {
+                setProgress(0, `Chưa có bản sao lưu cho ${periodName}.`);
+                log(`🛑 Đã giữ nguyên kỳ thi ${periodName}. Bạn có thể kéo thả file offline hoặc quét online khi quota hồi phục.`, "log-info");
+                return;
+              }
+            }
+          }
+        }
+      } catch(e) {}
+    }
+  }
+
   if (!rawJson || !Array.isArray(rawJson) || rawJson.length === 0) {
     setProgress(0, "Không tìm thấy file sao lưu trên máy chủ.");
-    log("❌ Chưa có bản sao lưu máy chủ cho kỳ thi này. Bạn có thể dùng chế độ tải tệp Offline.", "log-err");
+    log(`❌ Chưa có bản sao lưu máy chủ cho kỳ: ${periodName}. Bạn có thể dùng chế độ tải tệp Offline.`, "log-err");
     if (!isAutoFallback) {
-      alert("Chưa tìm thấy bản sao lưu máy chủ cho kỳ này. Vui lòng thử lại sau hoặc dùng chế độ kéo thả Offline.");
+      alert(`Chưa tìm thấy bản sao lưu máy chủ cho kỳ: [${periodName}]. Vui lòng thử lại sau hoặc dùng chế độ kéo thả Offline.`);
     }
     return;
   }
+
+  const activePeriodName = getPeriodName(matchedPeriod);
 
   // Lọc sạch loại trừ vĩnh viễn SBD 12026218
   const validBackup = rawJson.filter(item => {
@@ -3654,7 +3750,8 @@ window.loadFromServerBackup = async function(isAutoFallback = false) {
       records.push({
         sbd,
         grade: String(item.grade || "12"),
-        periodId: item.periodId || periodId,
+        periodId: matchedPeriod,
+        periodName: activePeriodName,
         headerRow: item.headerRow || item.headers || [],
         row: item.row
       });
@@ -3669,15 +3766,15 @@ window.loadFromServerBackup = async function(isAutoFallback = false) {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
   });
 
-  saveToCache(periodId, records);
+  saveToCache(matchedPeriod, records);
   renderStatsAndTable(records, sbdList, matched);
   promptBackup(records);
 
   setProgress(100, "Hoàn tất nạp bản sao lưu!");
   if (isAutoFallback) {
-    log(`🛡️ TỰ ĐỘNG CHUYỂN ĐỔI: Đã nạp thành công ${records.length} học sinh từ Bản sao lưu Máy chủ (0 Quota)!`, "log-ok");
+    log(`🛡️ TỰ ĐỘNG CHUYỂN ĐỔI: Đã nạp thành công ${records.length} học sinh kỳ ${activePeriodName} từ Bản sao lưu Máy chủ (0 Quota)!`, "log-ok");
   } else {
-    log(`⚡ THÀNH CÔNG: Đã nạp ${records.length} học sinh từ Bản sao lưu Máy chủ trong 0.2s mà không tốn Quota!`, "log-ok");
+    log(`⚡ THÀNH CÔNG: Đã nạp ${records.length} học sinh kỳ ${activePeriodName} từ Bản sao lưu Máy chủ trong 0.2s mà không tốn Quota!`, "log-ok");
   }
 };
 
@@ -3696,17 +3793,21 @@ function checkCache(periodId) {
     const btn = document.getElementById("btnLoadCache");
     if (saved && btn) {
       const data = JSON.parse(saved);
+      const periodName = getPeriodName(periodId);
       btn.style.display = "inline-block";
-      btn.textContent = `💾 Xem lại ${data.length} điểm đã lưu`;
+      btn.textContent = `💾 Xem lại ${data.length} điểm ${periodName} đã lưu`;
+    } else if (btn) {
+      btn.style.display = "none";
     }
   } catch(e) {}
 }
 
 window.loadFromCache = function() {
   const periodId = document.getElementById("selPeriod").value;
+  const periodName = getPeriodName(periodId);
   try {
     const saved = localStorage.getItem(`lqd_cache_${periodId}`);
-    if (!saved) return alert("Chưa có dữ liệu lưu trong máy cho kỳ này.");
+    if (!saved) return alert(`Chưa có dữ liệu lưu trong máy cho kỳ: [${periodName}].`);
     const records = JSON.parse(saved).filter(r => r.sbd !== "12026218");
     const rawSBD = document.getElementById("txtSBD").value;
     let sbdList = parseSBDs(rawSBD);
@@ -3725,7 +3826,7 @@ window.loadFromCache = function() {
 
     renderStatsAndTable(records, sbdList, matched);
     promptBackup(records);
-    log(`💾 Đã nạp ${records.length} điểm từ bộ nhớ máy tính mà không cần gọi mạng!`, "log-ok");
+    log(`💾 Đã nạp ${records.length} điểm kỳ ${periodName} từ bộ nhớ máy tính mà không cần gọi mạng!`, "log-ok");
   } catch(e) {
     alert("Lỗi khi đọc bộ nhớ máy: " + e.message);
   }
@@ -4456,7 +4557,7 @@ window.handleOfflineFile = function(e) {
 function processOfflineFile(file) {
   let rawSBD = document.getElementById("txtSBD").value;
   let sbdList = parseSBDs(rawSBD);
-  const periodId = document.getElementById("selPeriod").value;
+  let periodId = document.getElementById("selPeriod").value;
   let wanted = new Set(sbdList);
   const records = [];
   const matched = new Set();
@@ -4468,9 +4569,35 @@ function processOfflineFile(file) {
   const reader = new FileReader();
   reader.onload = function(evt) {
     try {
+      let activePeriodId = periodId;
+
       if (file.name.endsWith(".json")) {
         const json = JSON.parse(evt.target.result);
         const items = Array.isArray(json) ? json : [json];
+
+        // Tự động nhận diện kỳ thi từ JSON
+        for (const it of items) {
+          if (it && it.periodId && PERIOD_NAMES[it.periodId]) {
+            activePeriodId = it.periodId;
+            break;
+          }
+        }
+
+        // Nếu chưa tìm thấy trong JSON, thử dò theo tên file
+        if (activePeriodId === periodId) {
+          const fnMatch = file.name.match(/(GiuaHKI|CuoiHKI|GiuaHKII|CuoiHKII)_2026_2027/i);
+          if (fnMatch) {
+            const matchedKey = Object.keys(PERIOD_NAMES).find(k => k.toLowerCase() === fnMatch[0].toLowerCase());
+            if (matchedKey) activePeriodId = matchedKey;
+          }
+        }
+
+        if (activePeriodId !== periodId) {
+          document.getElementById("selPeriod").value = activePeriodId;
+          updatePeriodDisplay();
+          log(`📂 Tự động đồng bộ kỳ thi từ file: ${getPeriodName(activePeriodId)}`, "log-ok");
+          periodId = activePeriodId;
+        }
 
         // 1. Kiểm tra nếu là file sao lưu hệ thống: [{sbd, grade, periodId, headerRow, row}]
         const isBackupFormat = items.some(it => it && it.sbd && Array.isArray(it.row));
@@ -4483,7 +4610,8 @@ function processOfflineFile(file) {
                 records.push({
                   sbd,
                   grade: String(doc.grade || "12"),
-                  periodId: doc.periodId || periodId,
+                  periodId: doc.periodId || activePeriodId,
+                  periodName: doc.periodName || getPeriodName(doc.periodId || activePeriodId),
                   headerRow: doc.headerRow || doc.headers || [],
                   row: doc.row
                 });
@@ -4504,7 +4632,14 @@ function processOfflineFile(file) {
               const sbd = normSBD(row[3]);
               if (sbd && sbd !== "12026218") {
                 if (wanted.size === 0 || wanted.has(sbd)) {
-                  records.push({ sbd, grade: doc.grade || "12", periodId, headerRow: hdrs, row });
+                  records.push({
+                    sbd,
+                    grade: doc.grade || "12",
+                    periodId: activePeriodId,
+                    periodName: getPeriodName(activePeriodId),
+                    headerRow: hdrs,
+                    row
+                  });
                   matched.add(sbd);
                 }
               }
@@ -4536,7 +4671,14 @@ function processOfflineFile(file) {
             const sbd = normSBD(row[sbdCol] || row[3]);
             if (sbd && sbd !== "12026218") {
               if (wanted.size === 0 || wanted.has(sbd)) {
-                records.push({ sbd, grade: "12", periodId: sheetName, headerRow: headers, row });
+                records.push({
+                  sbd,
+                  grade: "12",
+                  periodId: activePeriodId,
+                  periodName: getPeriodName(activePeriodId),
+                  headerRow: headers,
+                  row
+                });
                 matched.add(sbd);
               }
             }
@@ -4563,11 +4705,11 @@ function processOfflineFile(file) {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
       });
 
-      saveToCache(periodId, records);
+      saveToCache(activePeriodId, records);
       renderStatsAndTable(records, sbdList, matched);
       promptBackup(records);
       setProgress(100, "Xong!");
-      log(`🎉 File offline đã lọc thành công! Khớp ${matched.size}/${sbdList.length} SBD.`, "log-ok");
+      log(`🎉 File offline đã lọc thành công! Khớp ${matched.size}/${sbdList.length} SBD kỳ ${getPeriodName(activePeriodId)}.`, "log-ok");
     } catch(err) {
       log(`❌ Lỗi đọc file offline: ${err.message}`, "log-err");
       alert("Không thể đọc file: " + err.message);
@@ -4622,8 +4764,10 @@ window.addEventListener("DOMContentLoaded", () => {
   updateFSBase();
   syncConfigFromWeb(false);
   const periodSel = document.getElementById("selPeriod");
-  checkCache(periodSel.value);
-  periodSel.addEventListener("change", () => checkCache(periodSel.value));
+  if (periodSel) {
+    updatePeriodDisplay();
+    periodSel.addEventListener("change", updatePeriodDisplay);
+  }
 });
 
 /* ── findSBDInRows ── */

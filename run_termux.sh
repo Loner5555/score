@@ -82,7 +82,7 @@ for D in "${DEST_DIRS[@]}"; do
         if [ -f "Bang_diem_tu_dong.xlsx" ]; then
             cp -f "Bang_diem_tu_dong.xlsx" "$D/" 2>/dev/null && COPIED=1
         fi
-        cp -f backup_*.json "$D/" 2>/dev/null || true
+        cp -f backup_${PERIOD}.json backup_latest.json "$D/" 2>/dev/null || true
         if [ $COPIED -eq 1 ]; then
             SAVE_PATH="$D"
             break
@@ -97,6 +97,7 @@ if [ $COPIED -eq 1 ]; then
     echo -e " 📁 Vị trí lưu: ${YELLOW}${SAVE_PATH}${NC}"
     echo -e " 📄 File 1: ${GREEN}Bang_diem_THPT_Le_Quy_Don_Khoi_12.xlsx${NC} (Tách 12A1->12A10, TBM, Xếp hạng)"
     echo -e " 📄 File 2: ${GREEN}Bang_diem_tu_dong.xlsx${NC} (Tổng hợp cả 3 Khối 10, 11, 12)"
+    echo -e " 📄 File 3: ${GREEN}backup_${PERIOD}.json${NC} (Bản sao lưu 0 Quota cho kỳ thi ${PERIOD})"
     echo -e " 👉 Bạn mở ứng dụng 'Tệp' (Files) hoặc 'Zalo/Excel' trên điện thoại là thấy ngay!"
 else
     echo -e " 📄 File được lưu tại thư mục hiện tại: $(pwd)"

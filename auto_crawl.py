@@ -40,6 +40,14 @@ AVAILABLE_PERIODS = {
 }
 
 
+def get_period_name(period_id: str) -> str:
+    """Trả về tên hiển thị tiếng Việt của kỳ thi."""
+    for _, (pid, pname) in AVAILABLE_PERIODS.items():
+        if pid == period_id:
+            return pname
+    return period_id
+
+
 def sync_latest_config_from_web():
     """Tự động kết nối tới findlqd.vercel.app để trích xuất database ID và API key mới nhất."""
     global PROJECT_ID, DATABASE_ID, API_KEY, BASE_URL
@@ -239,6 +247,7 @@ def main():
     print(f"[✓] Tổng số SBD có điểm: {len(matched)} / {len(sbd_list)}")
 
     # 3. Xuất file sao lưu JSON (dành cho Web chạy chế độ 0 Quota và khôi phục khi hết quota)
+    period_name = get_period_name(period_id)
     backup_records = []
     for r in records:
         if r.get("sbd") == SBD_EXCLUDED:
@@ -247,6 +256,7 @@ def main():
             "sbd": r.get("sbd"),
             "grade": str(r.get("grade", "12")),
             "periodId": period_id,
+            "periodName": period_name,
             "headerRow": r.get("headers") or r.get("headerRow", []),
             "row": r.get("row", [])
         })
@@ -258,7 +268,9 @@ def main():
     with open(backup_latest_file, "w", encoding="utf-8") as f:
         json.dump(backup_records, f, ensure_ascii=False, indent=2)
     output_files.extend([backup_period_file, backup_latest_file])
-    print(f"[🛡️] ĐÃ CẬP NHẬT FILE SAO LƯU JSON: {backup_period_file.name} & {backup_latest_file.name} ({len(backup_records)} học sinh)")
+    print(f"[🛡️] ĐÃ CẬP NHẬT FILE SAO LƯU JSON CHO KỲ THI: {period_name}")
+    print(f"    - File riêng kỳ thi: {backup_period_file.name} ({len(backup_records)} học sinh)")
+    print(f"    - File tổng mới nhất: {backup_latest_file.name}")
 
     # BƯỚC 4: TỰ ĐỘNG SAO CHÉP VÀO THƯ MỤC DOWNLOAD CỦA ANDROID / TERMUX
     android_destinations = [
