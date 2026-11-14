@@ -506,6 +506,17 @@
       display: inline-block;
       border: 1px solid #fde047;
     }
+    .badge-top-lop {
+      background: #dcfce7;
+      color: #166534;
+      font-size: .68rem;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+      display: inline-block;
+      border: 1px solid #86efac;
+    }
     .badge-top-truong {
       background: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
       color: white;
@@ -3870,7 +3881,7 @@ function processRecords(records) {
 
   const students = valid.map(r => {
     const row = r.row || [];
-    let nameIdx = 1, dobIdx = 2, sbdIdx = 3, clsIdx = 4;
+    let nameIdx = 1, dobIdx = -1, sbdIdx = 3, clsIdx = 4;
     let toanIdx = 5, vanIdx = 6, anhIdx = 7, lyIdx = 8, hoaIdx = 9, sinhIdx = 10, suIdx = 11, diaIdx = 12;
     let tongIdx = 13, tbmIdx = 15;
 
@@ -3913,7 +3924,7 @@ function processRecords(records) {
     let name = String(row[nameIdx] || "").trim();
     if (!name && typeof row[1] === "string" && /[a-zA-ZÀ-ỹ]/.test(row[1])) name = row[1].trim();
 
-    let dob = String(row[dobIdx] || "").trim();
+    let dob = dobIdx >= 0 ? String(row[dobIdx] || "").trim() : "";
     // Bảo vệ tuyệt đối: Nếu ô dob chứa số thực (điểm thi) mà không phải ngày tháng dạng dd/mm/yyyy
     if (dob && !dob.includes("/") && !dob.includes("-")) {
       const dateCell = row.find(c => typeof c === "string" && (c.includes("/") || c.includes("-")) && /\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/.test(c.trim()));
@@ -4390,11 +4401,13 @@ function renderStudentTable(catKey) {
 
       if (idx === 3) {
         td.style.textAlign = "left"; // Họ tên căn trái
-        // Vinh danh Top 10 Toàn trường hoặc Top 10 Khối
+        // Vinh danh Top 10: ưu tiên Trường > Khối > Lớp
         if (s.h_tong_truong && Number(s.h_tong_truong) <= 10) {
           td.innerHTML = `<strong>${s.name}</strong> <span class="badge-top-truong">🏆 Top ${s.h_tong_truong} Trường</span>`;
         } else if (s.h_tong_khoi && Number(s.h_tong_khoi) <= 10) {
           td.innerHTML = `<strong>${s.name}</strong> <span class="badge-top-khoi">🎖️ Top ${s.h_tong_khoi} K${s.grade}</span>`;
+        } else if (s.h_tong_lop && Number(s.h_tong_lop) <= 10) {
+          td.innerHTML = `<strong>${s.name}</strong> <span class="badge-top-lop">⭐ Top ${s.h_tong_lop} Lớp</span>`;
         }
       } else {
         td.style.textAlign = "center";
@@ -4417,34 +4430,48 @@ function renderStudentTable(catKey) {
     body.appendChild(tr);
   });
 
-  // Hàng TBM LỚP (nếu xem tab lớp hoặc xem toàn bộ)
+  // Hàng TBM LỚP: nếu xem tab lớp → 1 hàng; nếu xem "all" → 3 hàng riêng theo Khối (Điều 6)
   if (sorted.length > 0) {
-    const trTBM = document.createElement("tr");
-    trTBM.className = "tbm-row";
-
-    const calcAvg = (getter) => {
-      const validVals = sorted.map(getter).filter(v => v !== null && !isNaN(v));
+    const calcAvgFrom = (list, getter) => {
+      const validVals = list.map(getter).filter(v => v !== null && !isNaN(v));
       return validVals.length ? (validVals.reduce((a,b)=>a+b, 0)/validVals.length).toFixed(2) : "";
     };
 
-    const tbmVals = [
-      "", "", "", "TBM LỚP", "", "", catKey !== "all" ? catKey : "Toàn khối",
-      calcAvg(s => s.toan), calcAvg(s => s.van), calcAvg(s => s.anh),
-      calcAvg(s => s.ly), calcAvg(s => s.hoa), calcAvg(s => s.sinh),
-      calcAvg(s => s.su), calcAvg(s => s.dia),
-      "", "", "", calcAvg(s => s.tbm),
-      calcAvg(s => s.a00), calcAvg(s => s.a01), calcAvg(s => s.b00),
-      calcAvg(s => s.c00), calcAvg(s => s.d01), calcAvg(s => s.d07),
-      "", "", "", "", "", "", "", "", "", "", "", ""
-    ];
+    const makeTBMRow = (label, list, isSingle) => {
+      const tr = document.createElement("tr");
+      tr.className = "tbm-row";
+      const vals = [
+        "", "", "", isSingle ? "TBM LỚP" : label, "", "", isSingle ? catKey : label,
+        calcAvgFrom(list, s => s.toan), calcAvgFrom(list, s => s.van), calcAvgFrom(list, s => s.anh),
+        calcAvgFrom(list, s => s.ly), calcAvgFrom(list, s => s.hoa), calcAvgFrom(list, s => s.sinh),
+        calcAvgFrom(list, s => s.su), calcAvgFrom(list, s => s.dia),
+        "", "", "", calcAvgFrom(list, s => s.tbm),
+        calcAvgFrom(list, s => s.a00), calcAvgFrom(list, s => s.a01), calcAvgFrom(list, s => s.b00),
+        calcAvgFrom(list, s => s.c00), calcAvgFrom(list, s => s.d01), calcAvgFrom(list, s => s.d07),
+        "", "", "", "", "", "", "", "", "", "", "", ""
+      ];
+      vals.forEach((val, i) => {
+        const td = document.createElement("td");
+        td.textContent = val;
+        td.style.textAlign = "center";
+        if (!isSingle && i === 3) { td.style.fontWeight = "700"; td.style.color = "#92400e"; }
+        tr.appendChild(td);
+      });
+      return tr;
+    };
 
-    tbmVals.forEach(val => {
-      const td = document.createElement("td");
-      td.textContent = val;
-      td.style.textAlign = "center";
-      trTBM.appendChild(td);
-    });
-    body.appendChild(trTBM);
+    if (catKey !== "all") {
+      // Xem tab lớp cụ thể → 1 hàng TBM LỚP
+      body.appendChild(makeTBMRow("", sorted, true));
+    } else {
+      // Xem "Toàn bộ" → 3 hàng TOÀN KHỐI riêng biệt (Điều 6 - TUYỆT ĐỐI không gộp chung)
+      ["12", "11", "10"].forEach(g => {
+        const gList = sorted.filter(s => s.grade === g);
+        if (gList.length > 0) {
+          body.appendChild(makeTBMRow(`TOÀN KHỐI ${g}`, gList, false));
+        }
+      });
+    }
   }
 }
 
