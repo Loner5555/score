@@ -82,6 +82,7 @@ for D in "${DEST_DIRS[@]}"; do
         if [ -f "Bang_diem_tu_dong.xlsx" ]; then
             cp -f "Bang_diem_tu_dong.xlsx" "$D/" 2>/dev/null && COPIED=1
         fi
+        cp -f backup_*.json "$D/" 2>/dev/null || true
         if [ $COPIED -eq 1 ]; then
             SAVE_PATH="$D"
             break

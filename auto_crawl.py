@@ -238,6 +238,28 @@ def main():
 
     print(f"[✓] Tổng số SBD có điểm: {len(matched)} / {len(sbd_list)}")
 
+    # 3. Xuất file sao lưu JSON (dành cho Web chạy chế độ 0 Quota và khôi phục khi hết quota)
+    backup_records = []
+    for r in records:
+        if r.get("sbd") == SBD_EXCLUDED:
+            continue
+        backup_records.append({
+            "sbd": r.get("sbd"),
+            "grade": str(r.get("grade", "12")),
+            "periodId": period_id,
+            "headerRow": r.get("headers") or r.get("headerRow", []),
+            "row": r.get("row", [])
+        })
+
+    backup_period_file = Path(f"backup_{period_id}.json")
+    backup_latest_file = Path("backup_latest.json")
+    with open(backup_period_file, "w", encoding="utf-8") as f:
+        json.dump(backup_records, f, ensure_ascii=False, indent=2)
+    with open(backup_latest_file, "w", encoding="utf-8") as f:
+        json.dump(backup_records, f, ensure_ascii=False, indent=2)
+    output_files.extend([backup_period_file, backup_latest_file])
+    print(f"[🛡️] ĐÃ CẬP NHẬT FILE SAO LƯU JSON: {backup_period_file.name} & {backup_latest_file.name} ({len(backup_records)} học sinh)")
+
     # BƯỚC 4: TỰ ĐỘNG SAO CHÉP VÀO THƯ MỤC DOWNLOAD CỦA ANDROID / TERMUX
     android_destinations = [
         Path("/sdcard/Download"),

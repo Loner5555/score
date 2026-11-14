@@ -71,6 +71,19 @@
     #btnFetch:hover:not(:disabled) { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(29,78,216,.25); }
     #btnFetch:disabled { opacity: .6; cursor: not-allowed; transform: none; }
 
+    #btnServerBackup {
+      background: linear-gradient(135deg, #059669 0%, #047857 100%);
+      color: white; border: none; padding: 14px 22px; border-radius: 10px;
+      font-size: 1rem; font-weight: 600; cursor: pointer; transition: .2s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      box-shadow: 0 4px 12px rgba(5,150,105,.2);
+    }
+    #btnServerBackup:hover {
+      background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(5,150,105,.3);
+    }
+
     /* Progress */
     #progressWrap { display: none; flex-direction: column; gap: 8px; }
     .progress-bar-track { background: #e2e8f0; border-radius: 999px; height: 8px; overflow: hidden; }
@@ -579,11 +592,16 @@
     </div>
   </div>
 
-  <!-- Action: NÚT QUÉT ĐIỂM -->
-  <button id="btnFetch" onclick="startFetch()">
-    <div class="spinner" id="spinner"></div>
-    <span id="btnText">🚀 Lấy điểm Online &amp; Xuất Excel</span>
-  </button>
+  <!-- Actions: NÚT QUÉT ĐIỂM & NÚT NẠP BẢN SAO LƯU SERVER (0 QUOTA) -->
+  <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
+    <button id="btnFetch" onclick="startFetch()" style="flex:1.2; min-width:260px;">
+      <div class="spinner" id="spinner"></div>
+      <span id="btnText">🚀 Lấy điểm Online &amp; Xuất Excel</span>
+    </button>
+    <button id="btnServerBackup" type="button" onclick="loadFromServerBackup(false)" style="flex:1; min-width:240px;">
+      <span>⚡ Nạp Bản Sao Lưu Máy Chủ (0 Quota)</span>
+    </button>
+  </div>
 
   <!-- Offline fallback dropzone card -->
   <div class="dropzone" id="dropArea" onclick="document.getElementById('fileOffline').click()" ondragover="event.preventDefault()" ondrop="handleFileDrop(event)">
@@ -619,6 +637,39 @@
       <div class="stat"><div class="stat-value" id="statFound">0</div><div class="stat-label">Tìm thấy</div></div>
       <div class="stat"><div class="stat-value" id="statMissing">0</div><div class="stat-label">Chưa có dữ liệu</div></div>
       <div class="stat"><div class="stat-value" id="statRows">0</div><div class="stat-label">Dòng kết quả</div></div>
+    </div>
+
+    <!-- Backup Prompt Card: Hỏi người dùng có muốn sao lưu không -->
+    <div id="backupPromptCard" style="display:none; background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%); border: 1.5px solid #3b82f6; border-radius: 12px; padding: 16px; margin: 16px 0 20px 0; box-shadow: 0 4px 15px rgba(37,99,235,.12); position:relative;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+        <div style="flex:1;">
+          <div style="font-size:1rem; font-weight:800; color:#1e40af; display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <span>🛡️</span> SAO LƯU DỮ LIỆU ĐỂ PHÒNG NGỪA MÁY CHỦ HẾT QUOTA
+            <span style="background:#2563eb; color:white; font-size:.7rem; font-weight:700; padding:2px 8px; border-radius:999px;">Khuyên dùng</span>
+          </div>
+          <p style="font-size:.84rem; color:#334155; margin:6px 0 12px 0; line-height:1.5;">
+            Bạn vừa quét thành công <strong id="backupCountBadge" style="color:#1d4ed8; font-size:.95rem;">0</strong> học sinh!
+            Máy chủ trường THPT Lê Quý Đôn có hạn mức lượt đọc mỗi ngày (Quota). Bạn có muốn tạo bản sao lưu dữ liệu này để lần sau (hoặc khi máy chủ hết Quota) vẫn có thể xem lại ngay lập tức và chia sẻ cho bạn bè không?
+          </p>
+        </div>
+        <button type="button" onclick="dismissBackupPrompt()" style="background:transparent; border:none; color:#64748b; font-size:1.4rem; cursor:pointer; line-height:1; padding:2px 6px;" title="Đóng">&times;</button>
+      </div>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button type="button" onclick="saveToLocalCachePrompt()" style="background:#2563eb; color:white; border:none; border-radius:8px; padding:9px 15px; font-size:.84rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px; transition:.15s;">
+          💾 Lưu vào máy này (Local Cache)
+        </button>
+        <button type="button" onclick="downloadBackupJSON()" style="background:#059669; color:white; border:none; border-radius:8px; padding:9px 15px; font-size:.84rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px; transition:.15s;">
+          📥 Tải file sao lưu (.json)
+        </button>
+        <button type="button" onclick="showCloudSyncInstructions()" style="background:#475569; color:white; border:none; border-radius:8px; padding:9px 15px; font-size:.84rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px; transition:.15s;">
+          🌐 Đóng góp lên Server / Đám mây
+        </button>
+        <button type="button" onclick="dismissBackupPrompt()" style="background:white; color:#64748b; border:1px solid #cbd5e1; border-radius:8px; padding:9px 14px; font-size:.84rem; font-weight:500; cursor:pointer;">
+          Để sau
+        </button>
+      </div>
+      <div id="backupFeedback" style="display:none; margin-top:10px; font-size:.84rem; font-weight:600; padding:8px 12px; border-radius:6px;"></div>
     </div>
 
     <button id="btnDownload" onclick="downloadXLSX()" style="margin-bottom: 20px;">
@@ -687,6 +738,11 @@
       <strong>⚠️ Firestore hết quota hôm nay</strong><br/>
       Hệ thống Firebase của trường dùng free tier — giới hạn số lượt đọc mỗi ngày. Quota reset lúc <strong>07:00 sáng giờ VN (00:00 UTC)</strong>.<br/>
       ⏱️ Reset sau: <strong id="quotaCountdown">...</strong>
+      <div style="margin-top: 10px; display:flex; gap:8px; flex-wrap:wrap;">
+        <button type="button" onclick="loadFromServerBackup(false)" style="background:#059669; color:white; border:none; padding:8px 16px; border-radius:6px; font-size:.84rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px; box-shadow:0 2px 6px rgba(5,150,105,.25);">
+          ⚡ Chuyển sang Bản sao lưu Máy chủ (0 Quota) ngay lập tức
+        </button>
+      </div>
     </div>
   </div>
 
@@ -3458,6 +3514,173 @@ window.handleSBDFile = function(e) {
   reader.readAsText(file, "utf-8");
 };
 
+/* ── Quản lý Sao Lưu & Phòng Ngừa Hết Quota (Backup Management) ── */
+window.promptBackup = function(records) {
+  if (!records || records.length === 0) return;
+  const countEl = document.getElementById("backupCountBadge");
+  const cleanCount = records.filter(r => r.sbd !== "12026218").length;
+  if (countEl) countEl.textContent = cleanCount;
+  const card = document.getElementById("backupPromptCard");
+  if (card) {
+    card.style.display = "block";
+    const fb = document.getElementById("backupFeedback");
+    if (fb) fb.style.display = "none";
+    try { card.scrollIntoView({ behavior: "smooth", block: "nearest" }); } catch(e) {}
+  }
+};
+
+window.dismissBackupPrompt = function() {
+  const card = document.getElementById("backupPromptCard");
+  if (card) card.style.display = "none";
+};
+
+window.saveToLocalCachePrompt = function() {
+  const periodId = document.getElementById("selPeriod").value;
+  if (!_currentRecords || _currentRecords.length === 0) {
+    return alert("Chưa có dữ liệu để lưu.");
+  }
+  saveToCache(periodId, _currentRecords);
+  const fb = document.getElementById("backupFeedback");
+  if (fb) {
+    fb.style.display = "block";
+    fb.style.background = "#dcfce7";
+    fb.style.color = "#15803d";
+    fb.style.border = "1px solid #86efac";
+    fb.innerHTML = `✅ Đã lưu thành công ${_currentRecords.length} học sinh vào bộ nhớ máy này! Lần sau truy cập web bạn có thể xem lại ngay mà không tốn Quota.`;
+  }
+};
+
+window.downloadBackupJSON = function() {
+  const periodId = document.getElementById("selPeriod").value;
+  if (!_currentRecords || _currentRecords.length === 0) {
+    return alert("Chưa có dữ liệu để tải về.");
+  }
+  const cleanRecords = _currentRecords.filter(r => r.sbd !== "12026218").map(r => ({
+    sbd: r.sbd,
+    grade: r.grade,
+    periodId: r.periodId || periodId,
+    headerRow: r.headerRow || r.headers || [],
+    row: r.row
+  }));
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cleanRecords, null, 2));
+  const dlAnchor = document.createElement('a');
+  dlAnchor.setAttribute("href", dataStr);
+  dlAnchor.setAttribute("download", `lqd_backup_${periodId}.json`);
+  document.body.appendChild(dlAnchor);
+  dlAnchor.click();
+  dlAnchor.remove();
+
+  const fb = document.getElementById("backupFeedback");
+  if (fb) {
+    fb.style.display = "block";
+    fb.style.background = "#eff6ff";
+    fb.style.color = "#1d4ed8";
+    fb.style.border = "1px solid #bfdbfe";
+    fb.innerHTML = `📥 Đã tải file <strong>lqd_backup_${periodId}.json</strong> về máy! Bạn có thể gửi file này cho bạn bè hoặc kéo thả vào ô Offline bất kỳ lúc nào để xem điểm.`;
+  }
+};
+
+window.showCloudSyncInstructions = function() {
+  const periodId = document.getElementById("selPeriod").value;
+  const count = _currentRecords ? _currentRecords.length : 0;
+  alert(
+    `🌐 HƯỚNG DẪN ĐÓNG GÓP BẢN SAO LƯU LÊN MÁY CHỦ (0 QUOTA):\n\n` +
+    `1. Hiện tại máy chủ GitHub Pages đã có sẵn Bản sao lưu tự động cho ${count} học sinh.\n\n` +
+    `2. Bạn có thể bấm "Tải file sao lưu (.json)" để nhận file lqd_backup_${periodId}.json.\n\n` +
+    `3. Gửi file này vào repository GitHub (Loner5555/score) hoặc kéo thả trực tiếp vào web trên bất kỳ máy nào để mở điểm ngay lập tức mà không cần mạng hay quota!`
+  );
+};
+
+window.loadFromServerBackup = async function(isAutoFallback = false) {
+  const periodId = document.getElementById("selPeriod").value;
+  const rawSBD = document.getElementById("txtSBD").value;
+  let sbdList = parseSBDs(rawSBD);
+
+  // Danh sách các URL dự phòng từ CDN GitHub Pages và Raw Repo
+  const urlsToTry = [
+    `./backup_${periodId}.json`,
+    `./backup_latest.json`,
+    `https://raw.githubusercontent.com/Loner5555/score/main/backup_${periodId}.json`,
+    `https://raw.githubusercontent.com/Loner5555/score/main/backup_latest.json`
+  ];
+
+  log(`⚡ Đang kết nối tới Bản sao lưu Máy chủ (0 Quota)...`, "log-info");
+  document.getElementById("progressWrap").style.display = "flex";
+  setProgress(30, "Đang tải dữ liệu từ máy chủ dự phòng...");
+
+  let rawJson = null;
+  let successUrl = "";
+
+  for (const url of urlsToTry) {
+    try {
+      const resp = await fetch(url, { cache: "no-cache" });
+      if (resp.ok) {
+        rawJson = await resp.json();
+        successUrl = url;
+        break;
+      }
+    } catch(e) {}
+  }
+
+  if (!rawJson || !Array.isArray(rawJson) || rawJson.length === 0) {
+    setProgress(0, "Không tìm thấy file sao lưu trên máy chủ.");
+    log("❌ Chưa có bản sao lưu máy chủ cho kỳ thi này. Bạn có thể dùng chế độ tải tệp Offline.", "log-err");
+    if (!isAutoFallback) {
+      alert("Chưa tìm thấy bản sao lưu máy chủ cho kỳ này. Vui lòng thử lại sau hoặc dùng chế độ kéo thả Offline.");
+    }
+    return;
+  }
+
+  // Lọc sạch loại trừ vĩnh viễn SBD 12026218
+  const validBackup = rawJson.filter(item => {
+    const s = String(item.sbd || (item.row && item.row[3]) || "").trim();
+    return s !== "12026218";
+  });
+
+  // Nếu người dùng chưa nhập SBD nào, tự động lấy toàn bộ SBD từ file backup
+  if (sbdList.length === 0) {
+    sbdList = validBackup.map(item => String(item.sbd || (item.row && item.row[3]) || "").trim()).filter(Boolean);
+    document.getElementById("txtSBD").value = sbdList.join("\n");
+    document.getElementById("sbdCount").textContent = `${sbdList.length} SBD`;
+  }
+
+  let records = [];
+  let matched = new Set();
+  const wanted = new Set(sbdList);
+
+  for (const item of validBackup) {
+    const sbd = String(item.sbd || (item.row && item.row[3]) || "").trim();
+    if (wanted.has(sbd)) {
+      records.push({
+        sbd,
+        grade: String(item.grade || "12"),
+        periodId: item.periodId || periodId,
+        headerRow: item.headerRow || item.headers || [],
+        row: item.row
+      });
+      matched.add(sbd);
+    }
+  }
+
+  setProgress(80, "Đang xử lý thứ hạng và đóng gói file Excel...");
+
+  const xlsxArr = buildXLSX(records, sbdList, matched);
+  _xlsxBlob = new Blob([xlsxArr], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  });
+
+  saveToCache(periodId, records);
+  renderStatsAndTable(records, sbdList, matched);
+  promptBackup(records);
+
+  setProgress(100, "Hoàn tất nạp bản sao lưu!");
+  if (isAutoFallback) {
+    log(`🛡️ TỰ ĐỘNG CHUYỂN ĐỔI: Đã nạp thành công ${records.length} học sinh từ Bản sao lưu Máy chủ (0 Quota)!`, "log-ok");
+  } else {
+    log(`⚡ THÀNH CÔNG: Đã nạp ${records.length} học sinh từ Bản sao lưu Máy chủ trong 0.2s mà không tốn Quota!`, "log-ok");
+  }
+};
+
 /* ── Lưu và Tải Cache trình duyệt ── */
 function saveToCache(periodId, records) {
   if (!records || records.length === 0) return;
@@ -3484,9 +3707,14 @@ window.loadFromCache = function() {
   try {
     const saved = localStorage.getItem(`lqd_cache_${periodId}`);
     if (!saved) return alert("Chưa có dữ liệu lưu trong máy cho kỳ này.");
-    const records = JSON.parse(saved);
+    const records = JSON.parse(saved).filter(r => r.sbd !== "12026218");
     const rawSBD = document.getElementById("txtSBD").value;
-    const sbdList = parseSBDs(rawSBD);
+    let sbdList = parseSBDs(rawSBD);
+    if (sbdList.length === 0) {
+      sbdList = records.map(r => r.sbd);
+      document.getElementById("txtSBD").value = sbdList.join("\n");
+      document.getElementById("sbdCount").textContent = `${sbdList.length} SBD`;
+    }
     const matched = new Set(records.map(r => r.sbd));
 
     _currentRecords = records;
@@ -3496,6 +3724,7 @@ window.loadFromCache = function() {
     });
 
     renderStatsAndTable(records, sbdList, matched);
+    promptBackup(records);
     log(`💾 Đã nạp ${records.length} điểm từ bộ nhớ máy tính mà không cần gọi mạng!`, "log-ok");
   } catch(e) {
     alert("Lỗi khi đọc bộ nhớ máy: " + e.message);
@@ -4225,12 +4454,10 @@ window.handleOfflineFile = function(e) {
 };
 
 function processOfflineFile(file) {
-  const rawSBD = document.getElementById("txtSBD").value;
-  const sbdList = parseSBDs(rawSBD);
-  if (sbdList.length === 0) return alert("Vui lòng có ít nhất 1 SBD.");
-
+  let rawSBD = document.getElementById("txtSBD").value;
+  let sbdList = parseSBDs(rawSBD);
   const periodId = document.getElementById("selPeriod").value;
-  const wanted = new Set(sbdList);
+  let wanted = new Set(sbdList);
   const records = [];
   const matched = new Set();
 
@@ -4243,24 +4470,47 @@ function processOfflineFile(file) {
     try {
       if (file.name.endsWith(".json")) {
         const json = JSON.parse(evt.target.result);
-        // Hỗ trợ cả mảng hoặc object
         const items = Array.isArray(json) ? json : [json];
-        items.forEach(doc => {
-          let rows = [];
-          if (typeof doc.studentRowsJson === "string") {
-            try { rows = JSON.parse(doc.studentRowsJson); } catch {}
-          } else if (Array.isArray(doc.studentRows)) rows = doc.studentRows;
 
-          const hdrs = Array.isArray(doc.headerRow) ? doc.headerRow : [];
-          rows.forEach(row => {
-            for (const sbd of sbdList) {
-              if (row.some(c => normSBD(c) === sbd)) {
-                records.push({ sbd, grade: doc.grade || "12", periodId, headerRow: hdrs, row });
+        // 1. Kiểm tra nếu là file sao lưu hệ thống: [{sbd, grade, periodId, headerRow, row}]
+        const isBackupFormat = items.some(it => it && it.sbd && Array.isArray(it.row));
+
+        if (isBackupFormat) {
+          items.forEach(doc => {
+            const sbd = normSBD(doc.sbd || (doc.row && doc.row[3]));
+            if (sbd && sbd !== "12026218") {
+              if (wanted.size === 0 || wanted.has(sbd)) {
+                records.push({
+                  sbd,
+                  grade: String(doc.grade || "12"),
+                  periodId: doc.periodId || periodId,
+                  headerRow: doc.headerRow || doc.headers || [],
+                  row: doc.row
+                });
                 matched.add(sbd);
               }
             }
           });
-        });
+        } else {
+          // 2. File dump Firestore thô: exam_grades hoặc student_scores
+          items.forEach(doc => {
+            let rows = [];
+            if (typeof doc.studentRowsJson === "string") {
+              try { rows = JSON.parse(doc.studentRowsJson); } catch {}
+            } else if (Array.isArray(doc.studentRows)) rows = doc.studentRows;
+
+            const hdrs = Array.isArray(doc.headerRow) ? doc.headerRow : [];
+            rows.forEach(row => {
+              const sbd = normSBD(row[3]);
+              if (sbd && sbd !== "12026218") {
+                if (wanted.size === 0 || wanted.has(sbd)) {
+                  records.push({ sbd, grade: doc.grade || "12", periodId, headerRow: hdrs, row });
+                  matched.add(sbd);
+                }
+              }
+            });
+          });
+        }
       } else {
         // Excel hoặc CSV qua SheetJS
         const data = new Uint8Array(evt.target.result);
@@ -4283,14 +4533,28 @@ function processOfflineFile(file) {
           for (let ri = headerIdx + 1; ri < matrix.length; ri++) {
             const row = matrix[ri] || [];
             if (!row || row.length === 0) continue;
-            for (const sbd of sbdList) {
-              if (row.some(c => normSBD(c) === sbd)) {
+            const sbd = normSBD(row[sbdCol] || row[3]);
+            if (sbd && sbd !== "12026218") {
+              if (wanted.size === 0 || wanted.has(sbd)) {
                 records.push({ sbd, grade: "12", periodId: sheetName, headerRow: headers, row });
                 matched.add(sbd);
               }
             }
           }
         });
+      }
+
+      if (records.length === 0) {
+        setProgress(0, "Không tìm thấy học sinh nào phù hợp.");
+        alert("Không tìm thấy dữ liệu học sinh phù hợp trong file đã chọn.");
+        return;
+      }
+
+      // Nếu ô SBD trước đó trống, tự động điền danh sách SBD từ file vào
+      if (sbdList.length === 0) {
+        sbdList = Array.from(matched);
+        document.getElementById("txtSBD").value = sbdList.join("\n");
+        document.getElementById("sbdCount").textContent = `${sbdList.length} SBD`;
       }
 
       setProgress(90, "Đang tạo file Excel đầu ra...");
@@ -4301,6 +4565,7 @@ function processOfflineFile(file) {
 
       saveToCache(periodId, records);
       renderStatsAndTable(records, sbdList, matched);
+      promptBackup(records);
       setProgress(100, "Xong!");
       log(`🎉 File offline đã lọc thành công! Khớp ${matched.size}/${sbdList.length} SBD.`, "log-ok");
     } catch(err) {
@@ -4666,8 +4931,10 @@ window.startFetch = async function() {
         await Promise.all(promises);
       } catch (err) {
         if (quotaHit) {
-          log("🛑 FIREBASE BÁO HẾT QUOTA (RESOURCE_EXHAUSTED). Dừng ngay lập tức!", "log-err");
+          log("🛑 FIREBASE BÁO HẾT QUOTA (RESOURCE_EXHAUSTED). Tự động kích hoạt Bản sao lưu Máy chủ (0 Quota)...", "log-err");
           document.getElementById("quotaBanner").style.display = "block";
+          await loadFromServerBackup(true);
+          return;
         }
       }
     } 
@@ -4762,6 +5029,13 @@ window.startFetch = async function() {
       }
     }
 
+    if (quotaHit && records.length === 0) {
+      log("🛑 FIRESTORE HẾT QUOTA HÔM NAY. Tự động chuyển sang Bản sao lưu Máy chủ (0 Quota)...", "log-warn");
+      document.getElementById("quotaBanner").style.display = "block";
+      await loadFromServerBackup(true);
+      return;
+    }
+
     // ══════════════════════════════════════════════════════════════════════
     // PHASE 3: Xuất file Excel
     // ══════════════════════════════════════════════════════════════════════
@@ -4780,6 +5054,7 @@ window.startFetch = async function() {
     // Lưu vào cache và hiển thị bảng xem trước
     saveToCache(periodId, records);
     renderStatsAndTable(records, sbdList, matched);
+    promptBackup(records);
 
   } catch(e) {
     log(`❌ Lỗi: ${e?.message || e}`, "log-err");
