@@ -4401,12 +4401,12 @@ function renderStudentTable(catKey) {
 
       if (idx === 3) {
         td.style.textAlign = "left"; // Họ tên căn trái
-        // Vinh danh Top 10: ưu tiên Trường > Khối > Lớp
+        // Vinh danh Top 10: Trường & Khối hiện ở mọi tab; Top Lớp chỉ hiện khi đang xem tab lớp cụ thể
         if (s.h_tong_truong && Number(s.h_tong_truong) <= 10) {
           td.innerHTML = `<strong>${s.name}</strong> <span class="badge-top-truong">🏆 Top ${s.h_tong_truong} Trường</span>`;
         } else if (s.h_tong_khoi && Number(s.h_tong_khoi) <= 10) {
           td.innerHTML = `<strong>${s.name}</strong> <span class="badge-top-khoi">🎖️ Top ${s.h_tong_khoi} K${s.grade}</span>`;
-        } else if (s.h_tong_lop && Number(s.h_tong_lop) <= 10) {
+        } else if (catKey !== "all" && s.h_tong_lop && Number(s.h_tong_lop) <= 10) {
           td.innerHTML = `<strong>${s.name}</strong> <span class="badge-top-lop">⭐ Top ${s.h_tong_lop} Lớp</span>`;
         }
       } else {
